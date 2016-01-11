@@ -202,7 +202,6 @@ int jsmn_link_list(jsmntok_t *tokens) {
         }
         return cnt;
     }else{
-        printf("ERROR parsing tokens!\n");
         return -1;
     }
     

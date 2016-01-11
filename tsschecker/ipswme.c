@@ -33,19 +33,28 @@ void printJString(jsmntok_t *str, char * firmwarejson){
     putchar('\n');
 }
 
-int getListOfDevices(char *firmwarejson, char **retList, size_t *retcnt){
+jsmntok_t *parseTokens(char *json){
     jsmn_parser parser;
     jsmn_init(&parser);
     
     jsmntok_t *tokens;
     printf("[JSON] counting emlements\n");
-    size_t tokensCnt = jsmn_parse(&parser, firmwarejson, strlen(firmwarejson), NULL, NULL);
+    unsigned int tokensCnt = jsmn_parse(&parser, json, strlen(json), NULL, 0);
     
     tokens = (jsmntok_t*)malloc(sizeof(jsmntok_t) * tokensCnt);
     jsmn_init(&parser);
     printf("[JSON] parsing emlements\n");
-    size_t ret = jsmn_parse(&parser, firmwarejson, strlen(firmwarejson), tokens, tokensCnt);
+    size_t ret = jsmn_parse(&parser, json, strlen(json), tokens, tokensCnt);
+    return (ret>0) ? tokens : (jsmntok_t*)ret;
+}
+
+int getListOfDevices(char *firmwarejson, char **retList, size_t *retcnt){
     
+    jsmntok_t *tokens = parseTokens(firmwarejson);
+    if (tokens<=0) {
+        printf("[JSON] ERROR parsing json failed\n");
+        return -1;
+    }
     
     printf("[JSON] generating device list\n");
     jsmntok_t *ctok = tokens->value->value;
@@ -53,6 +62,6 @@ int getListOfDevices(char *firmwarejson, char **retList, size_t *retcnt){
         printJString(tmp, firmwarejson);
         if (tmp->next == ctok) break;
     }
-    
+    free(tokens);
     return 0;
 }
