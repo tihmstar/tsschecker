@@ -159,7 +159,10 @@ int jsmn_link_list(jsmntok_t *tokens) {
             cnt = 1;
         }else{
             cnt = jsmn_link_list(ctok) +1;
+            tokens->value = ctok->value;
+            tokens->size = ctok->size;
         }
+        
         return cnt;
     }
     

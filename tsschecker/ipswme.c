@@ -49,14 +49,10 @@ int getListOfDevices(char *firmwarejson, char **retList, size_t *retcnt){
     
     printf("[JSON] generating device list\n");
     jsmntok_t *ctok = tokens->value->value;
-    for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
+    for (jsmntok_t *tmp = ctok; ; tmp = tmp->next) {
         printJString(tmp, firmwarejson);
-        
-        if (tmp->next == ctok->value) break;
+        if (tmp->next == ctok) break;
     }
-    
-    
-    
     
     return 0;
 }

@@ -102,10 +102,9 @@ int main(int argc, const char * argv[]) {
 //    }
     
     printf("device=%s\nios=%s\n",device,ios);
-//    downloadFile("https://api.ipsw.me/v2.1/firmwares.json", "/tmp/firmware.json");
+    downloadFile("https://api.ipsw.me/v2.1/firmwares.json", "/tmp/firmware.json");
     
     FILE *f = fopen("/tmp/firmware.json", "rb");
-//    FILE *f = fopen("test.json", "rb");
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
