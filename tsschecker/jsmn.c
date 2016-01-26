@@ -161,6 +161,7 @@ int jsmn_link_list(jsmntok_t *tokens) {
             cnt = jsmn_link_list(ctok) +1;
             tokens->value = ctok->value;
             tokens->size = ctok->size;
+            tokens->type = (ctok->type == JSMN_OBJECT) ? JSMN_OBJECT_WITH_NAME : JSMN_ARRAY_WITH_NAME;
         }
         
         return cnt;
@@ -187,19 +188,22 @@ int jsmn_link_list(jsmntok_t *tokens) {
         tokens->value = ctok;
         ctok->value = 0;
         int cnt = 0;
+        int u = 0;
         for (int i=0; i<tokens->size; i++) {
             ctok->value = ctok->prev = 0;
             if (ctok->type == JSMN_STRING || ctok->type == JSMN_PRIMITIVE){
                 ctok->next = ctok+1;
-                ctok++;
-                cnt++;
+                ctok->prev = NULL;
+                u = 1;
             }else{
-                int u = jsmn_link_list(ctok) +1;
-                cnt +=u;
+                u = jsmn_link_list(ctok) +1;
                 ctok->next = (ctok + u);
-                ctok +=u;
+                ctok->prev = NULL;
             }
+            cnt +=u;
+            ctok +=u;
         }
+        (ctok-u)->next = NULL;
         return cnt;
     }else{
         return -1;

@@ -15,7 +15,7 @@ size_t my_fwrite(void *buffer, size_t size, size_t nmemb, void *stream)
 }
 
 int downloadFile(const char *url, const char *dstPath){
-    printf("[DOWN] downloading file %s\n",url);
+    info("[DOWN] downloading file %s\n",url);
     CURL *mcurl = curl_easy_init();
     
     FILE *dfile = fopen(dstPath, "w");

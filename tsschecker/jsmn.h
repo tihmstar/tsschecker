@@ -22,7 +22,11 @@ extern "C" {
         JSMN_OBJECT = 1,
         JSMN_ARRAY = 2,
         JSMN_STRING = 3,
-        JSMN_PRIMITIVE = 4
+        JSMN_PRIMITIVE = 4,
+#ifdef JSMN_LINKED_LIST
+        JSMN_OBJECT_WITH_NAME = 5,
+        JSMN_ARRAY_WITH_NAME = 6
+#endif
     } jsmntype_t;
     
     enum jsmnerr {

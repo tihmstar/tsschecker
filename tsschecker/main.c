@@ -9,12 +9,15 @@
 #include <stdio.h>
 #include <getopt.h>
 #include <string.h>
+#include <stdlib.h>
 #include "download.h"
-#include "ipswme.h"
+#include "tsschecker.h"
 
 #define FLAG_LIST_IOS       1 << 0
 #define FLAG_LIST_DEVIECS   1 << 1
 #define FLAG_OTA            1 << 2
+
+int dbglog;
 
 static struct option longopts[] = {
     { "list-devices",   no_argument,       NULL, 'l' },
@@ -101,27 +104,59 @@ int main(int argc, const char * argv[]) {
 //        }
 //    }
     
+    dbglog = 1;
+    
     printf("device=%s\nios=%s\n",device,ios);
-    downloadFile("https://api.ipsw.me/v2.1/firmwares.json", "/tmp/firmware.json");
+ 
+    char *firmwareJson = getFirmwareJson();
     
-    FILE *f = fopen("/tmp/firmware.json", "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
+    jsmntok_t *tokensz = NULL;
     
-    char *firmwareJson = malloc(fsize + 1);
-    fread(firmwareJson, fsize, 1, f);
-    fclose(f);
+    if (parseTokens(firmwareJson,&tokensz) <=0) {
+        printf("[JSON] ERROR parsing json failed\n");
+        return -1;
+    }
+    printListOfDevices(firmwareJson, tokensz);
+    printListOfIPSWForDevice(firmwareJson, tokensz, "iPhone4,1");
     
-    char *list;
-    size_t cnt;
-    getListOfDevices(firmwareJson, &list, &cnt);
+    
+    char *otaJson = getOtaJson();
+    
+    jsmntok_t *tokens = NULL;
+    
+    if (parseTokens(otaJson,&tokens) <=0) {
+        printf("[JSON] ERROR parsing json failed\n");
+        return -1;
+    }
+    printListOfOTAForDevice(otaJson, tokens, "iPhone4,1");
+    
+    
+    
+    char * url =getFirmwareUrl("iPhone4,1", "8.4.1", otaJson, tokens, 1);
+    char * url2 =getFirmwareUrl("iPhone4,1", "8.4.1", firmwareJson, tokensz, 0);
+    
+    printf("url=%s\n",url);
+    printf("url2=%s\n",url2);
+    
+    char * asd = getBuildManifest(url, 0);
+
+    
+    
+    free(asd);
+    free(tokens);
+    free(tokensz);
+    free(otaJson);
+    free(firmwareJson);
+    
+    
+    
     
     
     //list of all devices http://itunes.apple.com/check/version
     
+    //api https://api.ipsw.me/v2.1/ota.json/condensed
     //api https://api.ipsw.me/docs/2.1/
-    //api https://api.ipsw.me/v2.1/firmwares.json
+    //api https://api.ipsw.me/v2.1/firmwares.json/condensed
     
     printf("done\n");
     return 0;

@@ -11,7 +11,7 @@
 		87EB90AA1C2940EC002CEE70 /* libpartialzip-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87EB90A91C2940EC002CEE70 /* libpartialzip-1.0.0.dylib */; };
 		87EB90AC1C2940FB002CEE70 /* libplist.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87EB90AB1C2940FB002CEE70 /* libplist.3.dylib */; };
 		87EB90AE1C294108002CEE70 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 87EB90AD1C294108002CEE70 /* libcurl.tbd */; };
-		87F927AC1C3E44CE00343510 /* ipswme.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927AA1C3E44CE00343510 /* ipswme.c */; };
+		87F927AC1C3E44CE00343510 /* tsschecker.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927AA1C3E44CE00343510 /* tsschecker.c */; };
 		87F927AF1C3E455200343510 /* download.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927AD1C3E455200343510 /* download.c */; };
 		87F927B21C3E490F00343510 /* jsmn.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927B01C3E490F00343510 /* jsmn.c */; };
 /* End PBXBuildFile section */
@@ -29,13 +29,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		87CEC4C71C57677D006E75FC /* all.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = all.h; sourceTree = "<group>"; };
 		87EB909F1C2940CD002CEE70 /* tsschecker */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tsschecker; sourceTree = BUILT_PRODUCTS_DIR; };
 		87EB90A21C2940CD002CEE70 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		87EB90A91C2940EC002CEE70 /* libpartialzip-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libpartialzip-1.0.0.dylib"; path = "../../../../../usr/local/lib/libpartialzip-1.0.0.dylib"; sourceTree = "<group>"; };
 		87EB90AB1C2940FB002CEE70 /* libplist.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libplist.3.dylib; path = ../../../../../usr/local/lib/libplist.3.dylib; sourceTree = "<group>"; };
 		87EB90AD1C294108002CEE70 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
-		87F927AA1C3E44CE00343510 /* ipswme.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ipswme.c; sourceTree = "<group>"; };
-		87F927AB1C3E44CE00343510 /* ipswme.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ipswme.h; sourceTree = "<group>"; };
+		87F927AA1C3E44CE00343510 /* tsschecker.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tsschecker.c; sourceTree = "<group>"; };
+		87F927AB1C3E44CE00343510 /* tsschecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tsschecker.h; sourceTree = "<group>"; };
 		87F927AD1C3E455200343510 /* download.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = download.c; sourceTree = "<group>"; };
 		87F927AE1C3E455200343510 /* download.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = download.h; sourceTree = "<group>"; };
 		87F927B01C3E490F00343510 /* jsmn.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = jsmn.c; sourceTree = "<group>"; };
@@ -78,12 +79,13 @@
 		87EB90A11C2940CD002CEE70 /* tsschecker */ = {
 			isa = PBXGroup;
 			children = (
+				87CEC4C71C57677D006E75FC /* all.h */,
 				87F927AE1C3E455200343510 /* download.h */,
 				87F927AD1C3E455200343510 /* download.c */,
 				87F927B11C3E490F00343510 /* jsmn.h */,
 				87F927B01C3E490F00343510 /* jsmn.c */,
-				87F927AB1C3E44CE00343510 /* ipswme.h */,
-				87F927AA1C3E44CE00343510 /* ipswme.c */,
+				87F927AB1C3E44CE00343510 /* tsschecker.h */,
+				87F927AA1C3E44CE00343510 /* tsschecker.c */,
 				87EB90A21C2940CD002CEE70 /* main.c */,
 			);
 			path = tsschecker;
@@ -145,7 +147,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				87F927AC1C3E44CE00343510 /* ipswme.c in Sources */,
+				87F927AC1C3E44CE00343510 /* tsschecker.c in Sources */,
 				87F927AF1C3E455200343510 /* download.c in Sources */,
 				87EB90A31C2940CD002CEE70 /* main.c in Sources */,
 				87F927B21C3E490F00343510 /* jsmn.c in Sources */,
@@ -238,6 +240,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
+				GCC_PREFIX_HEADER = tsschecker/all.h;
 				HEADER_SEARCH_PATHS = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -248,6 +251,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
+				GCC_PREFIX_HEADER = tsschecker/all.h;
 				HEADER_SEARCH_PATHS = /usr/local/include;
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
