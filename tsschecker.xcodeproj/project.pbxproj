@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		87CEC4C91C576BD9006E75FC /* tss.c in Sources */ = {isa = PBXBuildFile; fileRef = 87CEC4C81C576BD9006E75FC /* tss.c */; };
 		87EB90A31C2940CD002CEE70 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 87EB90A21C2940CD002CEE70 /* main.c */; };
 		87EB90AA1C2940EC002CEE70 /* libpartialzip-1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87EB90A91C2940EC002CEE70 /* libpartialzip-1.0.0.dylib */; };
 		87EB90AC1C2940FB002CEE70 /* libplist.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87EB90AB1C2940FB002CEE70 /* libplist.3.dylib */; };
@@ -30,6 +31,8 @@
 
 /* Begin PBXFileReference section */
 		87CEC4C71C57677D006E75FC /* all.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = all.h; sourceTree = "<group>"; };
+		87CEC4C81C576BD9006E75FC /* tss.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tss.c; sourceTree = "<group>"; };
+		87CEC4CA1C576BE0006E75FC /* tss.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tss.h; sourceTree = "<group>"; };
 		87EB909F1C2940CD002CEE70 /* tsschecker */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tsschecker; sourceTree = BUILT_PRODUCTS_DIR; };
 		87EB90A21C2940CD002CEE70 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		87EB90A91C2940EC002CEE70 /* libpartialzip-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libpartialzip-1.0.0.dylib"; path = "../../../../../usr/local/lib/libpartialzip-1.0.0.dylib"; sourceTree = "<group>"; };
@@ -57,6 +60,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		87CEC4CB1C576BE8006E75FC /* libs */ = {
+			isa = PBXGroup;
+			children = (
+				87CEC4CA1C576BE0006E75FC /* tss.h */,
+				87CEC4C81C576BD9006E75FC /* tss.c */,
+			);
+			name = libs;
+			sourceTree = "<group>";
+		};
 		87EB90961C2940CD002CEE70 = {
 			isa = PBXGroup;
 			children = (
@@ -80,6 +92,7 @@
 			isa = PBXGroup;
 			children = (
 				87CEC4C71C57677D006E75FC /* all.h */,
+				87CEC4CB1C576BE8006E75FC /* libs */,
 				87F927AE1C3E455200343510 /* download.h */,
 				87F927AD1C3E455200343510 /* download.c */,
 				87F927B11C3E490F00343510 /* jsmn.h */,
@@ -148,6 +161,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				87F927AC1C3E44CE00343510 /* tsschecker.c in Sources */,
+				87CEC4C91C576BD9006E75FC /* tss.c in Sources */,
 				87F927AF1C3E455200343510 /* download.c in Sources */,
 				87EB90A31C2940CD002CEE70 /* main.c in Sources */,
 				87F927B21C3E490F00343510 /* jsmn.c in Sources */,

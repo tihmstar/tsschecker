@@ -10,8 +10,10 @@
 #define all_h
 
 extern int dbglog;
-
+extern int idevicerestore_debug;
 #define info(a ...) printf(a)
 #define log(a ...) if (dbglog) printf(a)
+#define debug(a ...) if (idevicerestore_debug) printf(a)
+#define error(a ...) printf(a)
 
 #endif /* all_h */

@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include "jsmn.h"
+#include <plist/plist.h>
 
 char *getFirmwareJson();
 char *getOtaJson();
@@ -22,5 +23,6 @@ int printListOfOTAForDevice(char *firmwarejson, jsmntok_t *tokens, char *device)
 char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *tokens, int isOta);
 char *getBuildManifest(char *url, int isOta);
 
+int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit);
 
 #endif /* tsscheker_h */

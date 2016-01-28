@@ -18,6 +18,7 @@
 #define FLAG_OTA            1 << 2
 
 int dbglog;
+int idevicerestore_debug;
 
 static struct option longopts[] = {
     { "list-devices",   no_argument,       NULL, 'l' },
@@ -138,9 +139,12 @@ int main(int argc, const char * argv[]) {
     printf("url=%s\n",url);
     printf("url2=%s\n",url2);
     
-    char * asd = getBuildManifest(url, 0);
+    char * asd = getBuildManifest(url2, 0);
 
+    plist_t tssrequest = NULL;
+    tssreq(&tssrequest,asd,0);
     
+    plist_free(tssrequest);
     
     free(asd);
     free(tokens);

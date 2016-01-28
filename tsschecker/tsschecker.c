@@ -9,10 +9,12 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <math.h>
 #include "tsschecker.h"
 #include "jsmn.h"
 #include "download.h"
 #include <libpartialzip-1.0/libpartialzip.h>
+#include "tss.h"
 
 #define FIRMWARE_JSON_PATH "/tmp/firmware.json"
 //#define FIRMWARE_JSON_URL "https://api.ipsw.me/v2.1/firmwares.json"
@@ -21,6 +23,7 @@
 #define FIRMWARE_OTA_JSON_URL "https://api.ipsw.me/v2.1/ota.json/condensed"
 
 #define MANIFEST_SAVE_PATH "/tmp/tsschecker"
+#define noncelen 20
 
 char *getFirmwareJson(){
     info("[TSSC] opening firmware.json\n");
@@ -163,7 +166,7 @@ char *getBuildManifest(char *url, int isOta){
     
     if (!f){
         //download if it isn't there
-        if (downloadPartialzip(url, (isOta) ? "BuildManifest.plist" : "AssetData/boot/BuildManifest.plist", fileDir)){
+        if (downloadPartialzip(url, (isOta) ? "AssetData/boot/BuildManifest.plist" : "BuildManifest.plist", fileDir)){
             free(fileDir);
             return NULL;
         }
@@ -181,6 +184,138 @@ char *getBuildManifest(char *url, int isOta){
     
     free(fileDir);
     return buildmanifest;
+}
+
+void debug_plist(plist_t plist);
+
+void getRandNum(char *dst, size_t size, int base){
+    for (int i=0; i<size; i++) {
+        int j;
+        dst[i] = ((j = arc4random() % base) < 10) ? '0' + j : 'a' + j-10;
+    }
+}
+
+int tss_populate_devicevals(plist_t tssreq, uint64_t ecid, char *nonce, size_t nonce_size, char *sep_nonce, size_t sep_nonce_size, int image4supported){
+    
+    plist_dict_set_item(tssreq, "ApECID", plist_new_uint(ecid)); //0000000000000000
+    if (nonce) {
+        plist_dict_set_item(tssreq, "ApNonce", plist_new_data(nonce, nonce_size));//aa aa aa aa bb cc dd ee ff 00 11 22 33 44 55 66 77 88 99 aa
+    }
+    
+    if (sep_nonce) {//aa aa aa aa bb cc dd ee ff 00 11 22 33 44 55 66 77 88 99 aa
+        plist_dict_set_item(tssreq, "ApSepNonce", plist_new_data(sep_nonce, sep_nonce_size));
+    }
+    
+    plist_dict_set_item(tssreq, "ApProductionMode", plist_new_bool(1));
+    
+    if (image4supported) {
+        plist_dict_set_item(tssreq, "ApSecurityMode", plist_new_bool(1));
+        plist_dict_set_item(tssreq, "ApSupportsImg4", plist_new_bool(1));
+    } else {
+        plist_dict_set_item(tssreq, "ApSupportsImg4", plist_new_bool(0));
+    }
+    
+    return 0;
+}
+
+int tss_populate_basebandvals(plist_t tssreq){
+    plist_t parameters = plist_new_dict();
+    char bbnonce[noncelen+1];
+    char bbsnum[5];
+    int64_t BbChipID = 0;
+    int64_t BbGoldCertId = 0;
+    
+    getRandNum(bbnonce, noncelen, 16);
+    getRandNum(bbsnum, 4, 16);
+    
+    int n=0; for (int i=0; i<7; i++) BbChipID += (arc4random() % 10) * pow(10, ++n);
+        n=0; for (int i=0; i<9; i++) BbGoldCertId -= (arc4random() % 10) * pow(10, ++n);
+    
+    
+    plist_dict_set_item(parameters, "BbNonce", plist_new_data(bbnonce, noncelen));
+    plist_dict_set_item(parameters, "BbChipID", plist_new_uint(BbChipID));
+    plist_dict_set_item(parameters, "BbGoldCertId", plist_new_uint(BbGoldCertId));
+    plist_dict_set_item(parameters, "BbSNUM", plist_new_data(bbsnum, 4));
+    
+    tss_request_add_baseband_tags(tssreq, parameters, NULL);
+    return 0;
+}
+
+int tss_populate_random(plist_t tssreq, int is64bit){
+    uint64_t ecid = 0;
+    char nonce[noncelen+1];
+    char sep_nonce[noncelen+1];
+    
+    int n=0;
+    for (int i=0; i<16; i++) ecid += (arc4random() % 10) * pow(10, ++n);
+    getRandNum(nonce, noncelen, 16);
+    getRandNum(sep_nonce, noncelen, 16);
+    
+    nonce[noncelen] = sep_nonce[noncelen] = 0;
+    
+    debug("[TSSR] ecid=%llu\n",ecid);
+    debug("[TSSR] nonce=%s\n",nonce);
+    debug("[TSSR] sepnonce=%s\n",sep_nonce);
+    
+    return tss_populate_devicevals(tssreq, ecid, nonce, noncelen, sep_nonce, noncelen, is64bit);
+}
+
+
+
+int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit){
+#define reterror(a) {error(a); error = -1; goto error;}
+    int error = 0;
+    plist_t manifest = NULL;
+    plist_t tssparameter = plist_new_dict();
+    plist_t tssreq = tss_request_new(NULL);
+    
+    plist_from_xml(buildManifest, (unsigned)strlen(buildManifest), &manifest);
+    
+    plist_t buildidentities = plist_dict_get_item(manifest, "BuildIdentities");
+    if (!buildidentities || plist_get_node_type(buildidentities) != PLIST_ARRAY){
+        error("[TSSR] Error: could not get BuildIdentities\n");
+        return -1;
+    }
+    plist_t id0 = plist_array_get_item(buildidentities, 0);
+    if (!id0 || plist_get_node_type(id0) != PLIST_DICT){
+        error("[TSSR] Error: could not get id0\n");
+        return -1;
+    }
+
+    
+    tss_populate_random(tssparameter,is64Bit);
+    tss_parameters_add_from_manifest(tssparameter, id0);
+    
+    if (tss_request_add_common_tags(tssreq, tssparameter, NULL) < 0) {
+        reterror("[TSSR] ERROR: Unable to add common tags to TSS request\n");
+    }
+    
+    if (tss_request_add_ap_tags(tssreq, tssparameter, NULL) < 0) {
+        reterror("[TSSR] ERROR: Unable to add common tags to TSS request\n");
+    }
+    
+    if (is64Bit) {
+        if (tss_request_add_ap_img4_tags(tssreq, tssparameter) < 0) {
+            reterror("[TSSR] ERROR: Unable to add img4 tags to TSS request\n");
+        }
+    } else {
+        if (tss_request_add_ap_img3_tags(tssreq, tssparameter) < 0) {
+            reterror("[TSSR] ERROR: Unable to add img3 tags to TSS request\n");
+        }
+    }
+    
+    
+#warning DEBUG
+    tss_populate_basebandvals(tssreq);
+    debug_plist(tssreq);
+    
+    *tssrequest = tssreq;
+error:
+    plist_free(manifest);
+    plist_free(tssparameter);
+    if (error) plist_free(tssreq);
+    return error;
+#undef reterror
 }
 
 #pragma mark print functions
