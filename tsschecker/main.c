@@ -106,6 +106,7 @@ int main(int argc, const char * argv[]) {
 //    }
     
     dbglog = 1;
+    idevicerestore_debug = 1;
     
     printf("device=%s\nios=%s\n",device,ios);
  
@@ -134,17 +135,15 @@ int main(int argc, const char * argv[]) {
     
     
     char * url =getFirmwareUrl("iPhone4,1", "8.4.1", otaJson, tokens, 1);
-    char * url2 =getFirmwareUrl("iPhone4,1", "8.4.1", firmwareJson, tokensz, 0);
+    char * url2 =getFirmwareUrl("iPhone7,2", "9.2", firmwareJson, tokensz, 0);
     
     printf("url=%s\n",url);
     printf("url2=%s\n",url2);
     
     char * asd = getBuildManifest(url2, 0);
 
-    plist_t tssrequest = NULL;
-    tssreq(&tssrequest,asd,0);
+    int ret = isManifestSigned(asd,NULL);
     
-    plist_free(tssrequest);
     
     free(asd);
     free(tokens);

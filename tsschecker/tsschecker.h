@@ -23,6 +23,7 @@ int printListOfOTAForDevice(char *firmwarejson, jsmntok_t *tokens, char *device)
 char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *tokens, int isOta);
 char *getBuildManifest(char *url, int isOta);
 
-int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit);
+int tssrequest(plist_t *tssrequest, char *buildManifest, int64_t BbGoldCertId);
+int isManifestSigned(char *buildManifest, int64_t BbGoldCertId);
 
 #endif /* tsscheker_h */

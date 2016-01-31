@@ -179,6 +179,7 @@ char *getBuildManifest(char *url, int isOta){
     //load it
     char *buildmanifest = malloc(fsize + 1);
     fread(buildmanifest, fsize, 1, f);
+    buildmanifest[fsize] = '\0';
     fclose(f);
     
     
@@ -191,7 +192,8 @@ void debug_plist(plist_t plist);
 void getRandNum(char *dst, size_t size, int base){
     for (int i=0; i<size; i++) {
         int j;
-        dst[i] = ((j = arc4random() % base) < 10) ? '0' + j : 'a' + j-10;
+        if (base == 256) dst[i] = arc4random() % base;
+        else dst[i] = ((j = arc4random() % base) < 10) ? '0' + j : 'a' + j-10;
     }
 }
 
@@ -218,24 +220,35 @@ int tss_populate_devicevals(plist_t tssreq, uint64_t ecid, char *nonce, size_t n
     return 0;
 }
 
-int tss_populate_basebandvals(plist_t tssreq){
+int tss_populate_basebandvals(plist_t tssreq, plist_t tssparameters, int64_t BbGoldCertId){
     plist_t parameters = plist_new_dict();
     char bbnonce[noncelen+1];
     char bbsnum[5];
     int64_t BbChipID = 0;
-    int64_t BbGoldCertId = 0;
     
-    getRandNum(bbnonce, noncelen, 16);
-    getRandNum(bbsnum, 4, 16);
+    getRandNum(bbnonce, noncelen, 256);
+    getRandNum(bbsnum, 4, 256);
     
-    int n=0; for (int i=0; i<7; i++) BbChipID += (arc4random() % 10) * pow(10, ++n);
-        n=0; for (int i=0; i<9; i++) BbGoldCertId -= (arc4random() % 10) * pow(10, ++n);
+    int n=0; for (int i=1; i<7; i++) BbChipID += (arc4random() % 10) * pow(10, ++n);
     
     
     plist_dict_set_item(parameters, "BbNonce", plist_new_data(bbnonce, noncelen));
     plist_dict_set_item(parameters, "BbChipID", plist_new_uint(BbChipID));
     plist_dict_set_item(parameters, "BbGoldCertId", plist_new_uint(BbGoldCertId));
     plist_dict_set_item(parameters, "BbSNUM", plist_new_data(bbsnum, 4));
+    
+    /* BasebandFirmware */
+    plist_t BasebandFirmware = plist_access_path(tssparameters, 2, "Manifest", "BasebandFirmware");
+    if (!BasebandFirmware || plist_get_node_type(BasebandFirmware) != PLIST_DICT) {
+        error("ERROR: Unable to get BasebandFirmware node\n");
+        return -1;
+    }
+    plist_t bbfwdict = plist_copy(BasebandFirmware);
+    BasebandFirmware = NULL;
+    if (plist_dict_get_item(bbfwdict, "Info")) {
+        plist_dict_remove_item(bbfwdict, "Info");
+    }
+    plist_dict_set_item(tssreq, "BasebandFirmware", bbfwdict);
     
     tss_request_add_baseband_tags(tssreq, parameters, NULL);
     return 0;
@@ -247,9 +260,9 @@ int tss_populate_random(plist_t tssreq, int is64bit){
     char sep_nonce[noncelen+1];
     
     int n=0;
-    for (int i=0; i<16; i++) ecid += (arc4random() % 10) * pow(10, ++n);
-    getRandNum(nonce, noncelen, 16);
-    getRandNum(sep_nonce, noncelen, 16);
+    for (int i=0; i<16; i++) ecid += (arc4random() % 10) * pow(10, n++);
+    getRandNum(nonce, noncelen, 256);
+    getRandNum(sep_nonce, noncelen, 256);
     
     nonce[noncelen] = sep_nonce[noncelen] = 0;
     
@@ -262,7 +275,7 @@ int tss_populate_random(plist_t tssreq, int is64bit){
 
 
 
-int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit){
+int tssrequest(plist_t *tssrequest, char *buildManifest, int64_t BbGoldCertId){
 #define reterror(a) {error(a); error = -1; goto error;}
     int error = 0;
     plist_t manifest = NULL;
@@ -273,23 +286,28 @@ int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit){
     
     plist_t buildidentities = plist_dict_get_item(manifest, "BuildIdentities");
     if (!buildidentities || plist_get_node_type(buildidentities) != PLIST_ARRAY){
-        error("[TSSR] Error: could not get BuildIdentities\n");
-        return -1;
+        reterror("[TSSR] Error: could not get BuildIdentities\n");
     }
     plist_t id0 = plist_array_get_item(buildidentities, 0);
     if (!id0 || plist_get_node_type(id0) != PLIST_DICT){
-        error("[TSSR] Error: could not get id0\n");
-        return -1;
+        reterror("[TSSR] Error: could not get id0\n");
     }
-
+    plist_t manifestdict = plist_dict_get_item(id0, "Manifest");
+    if (!manifestdict || plist_get_node_type(manifestdict) != PLIST_DICT){
+        reterror("[TSSR] Error: could not get manifest\n");
+    }
+    plist_t sep = plist_dict_get_item(manifestdict, "SEP");
+    int is64Bit = !(!sep || plist_get_node_type(sep) != PLIST_DICT);
     
     tss_populate_random(tssparameter,is64Bit);
     tss_parameters_add_from_manifest(tssparameter, id0);
     
+    debug_plist(tssparameter);
+    
     if (tss_request_add_common_tags(tssreq, tssparameter, NULL) < 0) {
         reterror("[TSSR] ERROR: Unable to add common tags to TSS request\n");
     }
-    
+
     if (tss_request_add_ap_tags(tssreq, tssparameter, NULL) < 0) {
         reterror("[TSSR] ERROR: Unable to add common tags to TSS request\n");
     }
@@ -306,8 +324,11 @@ int tssreq(plist_t *tssrequest, char *buildManifest, int is64Bit){
     
     
 #warning DEBUG
-    tss_populate_basebandvals(tssreq);
-    debug_plist(tssreq);
+    if (BbGoldCertId) {
+        tss_populate_basebandvals(tssreq,tssparameter,BbGoldCertId);
+        tss_request_add_baseband_tags(tssreq, tssparameter, NULL);
+    }
+    
     
     *tssrequest = tssreq;
 error:
@@ -316,6 +337,21 @@ error:
     if (error) plist_free(tssreq);
     return error;
 #undef reterror
+}
+
+int isManifestSigned(char *buildManifest, int64_t BbGoldCertId){
+    
+    plist_t tssreq = NULL;
+    
+#warning DEBUG is64bit
+    tssrequest(&tssreq,buildManifest,BbGoldCertId);
+    
+    plist_t apticket = tss_request_send(tssreq, NULL);
+    
+    debug_plist(apticket);
+    
+    if (tssreq) plist_free(tssreq);
+    return 1;
 }
 
 #pragma mark print functions
