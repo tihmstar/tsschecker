@@ -25,7 +25,7 @@ char *getBuildManifest(char *url, int isOta);
 int64_t getBBGCIDForDevice(char *deviceModel);
 
 int tssrequest(plist_t *tssrequest, char *buildManifest, char *device);
-int isVersionSignedForDevice(char *version, char *device, int otaFirmware, int checkBaseband);
+int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband);
 
 int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens);
 int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens);

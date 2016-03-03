@@ -388,21 +388,13 @@ error:
 #undef reterror
 }
 
-int isVersionSignedForDevice(char *version, char *device, int otaFirmware, int checkBaseband){
+int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband){
     int isSigned = 0;
 #define reterror(a ... ) {error(a); goto error;}
-    char *firmwareJson = NULL;
-    jsmntok_t *firmwareTokens = NULL;
     char *url = NULL;
     char *buildManifest = NULL;
     plist_t tssreq = NULL;
     plist_t apticket = NULL;
-    
-    firmwareJson = (otaFirmware) ? getOtaJson() : getFirmwareJson();
-    if (!firmwareJson) reterror("[TSSC] ERROR: could not get firmware.json\n");
-    
-    int cnt = parseTokens(firmwareJson, &firmwareTokens);
-    if (cnt < 1) reterror("[TSSC] ERROR: parsing firmware.json failed\n");
     
     url = getFirmwareUrl(device, version, firmwareJson, firmwareTokens, otaFirmware);
     if (!url) reterror("[TSSC] ERROR: could not get url for device %s on iOS %s\n",device,version);
@@ -419,8 +411,6 @@ int isVersionSignedForDevice(char *version, char *device, int otaFirmware, int c
 
     
 error:
-    if (firmwareJson) free(firmwareJson);
-    if (firmwareTokens) free(firmwareTokens);
     if (url) free(url);
     if (buildManifest) free(buildManifest);
     if (tssreq) plist_free(tssreq);
@@ -431,15 +421,44 @@ error:
 
 #pragma mark print functions
 
+#warning print devices function doesn't actually check if devices are sorted. it assues they are sorted in json
 int printListOfDevices(char *firmwarejson, jsmntok_t *tokens){
-    
+#define MAX_PER_LINE 10
     log("[JSON] printing device list\n");
+    int curr = 0;
+    int currLen = 0;
+    int rspn = 0;
+    putchar('\n');
     jsmntok_t *ctok = objectForKey(tokens, firmwarejson, "devices");
     for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
-        printJString(tmp, firmwarejson);
+        if (!curr){
+            curr = tmp->start;
+            currLen = tmp->end - tmp->start;
+        }else{
+            for (int i = 0; i<currLen; i++) {
+                char c = *(firmwarejson+curr+i);
+                if (!(('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z'))) break;
+                if (c != *(firmwarejson+tmp->start+i)) {
+                    putchar('\n');
+                    putchar('\n');
+                    curr = tmp->start;
+                    currLen = tmp->end - tmp->start;
+                    rspn = 0;
+                    break;
+                }
+            }
+        }
+        for (int j=0; j<tmp->end-tmp->start; j++) {
+            putchar(*(firmwarejson+tmp->start + j));
+        }
+        if (++rspn>= MAX_PER_LINE) putchar('\n'), rspn = 0; else putchar(' ');
+        
         if (tmp->next == ctok->value) break;
     }
+    putchar('\n');
+    putchar('\n');
     return 0;
+#undef MAX_PER_LINE
 }
 
 int printListOfIPSWForDevice(char *firmwarejson, jsmntok_t *tokens, char *device){
