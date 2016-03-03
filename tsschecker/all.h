@@ -11,8 +11,12 @@
 
 extern int dbglog;
 extern int idevicerestore_debug;
+extern int print_tss_request;
+extern int print_tss_response;
+
 #define info(a ...) printf(a)
 #define log(a ...) if (dbglog) printf(a)
+#define warning(a ...) if (dbglog) printf(a)
 #define debug(a ...) if (idevicerestore_debug) printf(a)
 #define error(a ...) printf(a)
 

@@ -17,18 +17,36 @@
 #include "tss.h"
 
 #define FIRMWARE_JSON_PATH "/tmp/firmware.json"
-//#define FIRMWARE_JSON_URL "https://api.ipsw.me/v2.1/firmwares.json"
 #define FIRMWARE_JSON_URL "https://api.ipsw.me/v2.1/firmwares.json/condensed"
 #define FIRMWARE_OTA_JSON_PATH "/tmp/ota.json"
 #define FIRMWARE_OTA_JSON_URL "https://api.ipsw.me/v2.1/ota.json/condensed"
+#define BBGCID_JSON_PATH "/tmp/bbgcid.json"
+#define BBGCID_JSON_URL "http://api.tihmstar.net/bbgcid?condensed=1"
 
 #define MANIFEST_SAVE_PATH "/tmp/tsschecker"
 #define noncelen 20
 
+#pragma mark getJson functions
+
+char *getBBCIDJson(){
+    info("[TSSC] opening bbgcid.json\n");
+    FILE *f = fopen(BBGCID_JSON_PATH, "rb");
+    if (!f){
+        downloadFile(BBGCID_JSON_URL, BBGCID_JSON_PATH);
+        f = fopen(BBGCID_JSON_PATH, "rb");
+    }
+    fseek(f, 0, SEEK_END);
+    long fsize = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    char *fJson = malloc(fsize + 1);
+    fread(fJson, fsize, 1, f);
+    fclose(f);
+    return fJson;
+}
+
 char *getFirmwareJson(){
     info("[TSSC] opening firmware.json\n");
     FILE *f = fopen(FIRMWARE_JSON_PATH, "rb");
-    
     if (!f){
         downloadFile(FIRMWARE_JSON_URL, FIRMWARE_JSON_PATH);
         f = fopen(FIRMWARE_JSON_PATH, "rb");
@@ -36,18 +54,15 @@ char *getFirmwareJson(){
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
-    
-    char *firmwareJson = malloc(fsize + 1);
-    fread(firmwareJson, fsize, 1, f);
+    char *fJson = malloc(fsize + 1);
+    fread(fJson, fsize, 1, f);
     fclose(f);
-    
-    return firmwareJson;
+    return fJson;
 }
 
 char *getOtaJson(){
     info("[TSSC] opening ota.json\n");
     FILE *f = fopen(FIRMWARE_OTA_JSON_PATH, "rb");
-    
     if (!f){
         downloadFile(FIRMWARE_OTA_JSON_URL, FIRMWARE_OTA_JSON_PATH);
         f = fopen(FIRMWARE_OTA_JSON_PATH, "rb");
@@ -55,12 +70,10 @@ char *getOtaJson(){
     fseek(f, 0, SEEK_END);
     long fsize = ftell(f);
     fseek(f, 0, SEEK_SET);
-    
-    char *firmwareJson = malloc(fsize + 1);
-    fread(firmwareJson, fsize, 1, f);
+    char *fJson = malloc(fsize + 1);
+    fread(fJson, fsize, 1, f);
     fclose(f);
-    
-    return firmwareJson;
+    return fJson;
 }
 
 #pragma mark json functions
@@ -98,7 +111,7 @@ int parseTokens(char *json, jsmntok_t **tokens){
     return jsmn_parse(&parser, json, strlen(json), *tokens, tokensCnt);
 }
 
-#define get functions
+#pragma mark get functions
 
 char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *tokens, int isOta){
     
@@ -108,7 +121,7 @@ char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *
     
     for (jsmntok_t *tmp = firmwares->value; tmp != NULL; tmp = tmp->next) {
         jsmntok_t *ios = objectForKey(tmp, firmwarejson, "version");
-        if (strncmp(version, firmwarejson + ios->value->start, strlen(version)) == 0) {
+        if (ios->value->end - ios->value->start == strlen(version) && strncmp(version, firmwarejson + ios->value->start, strlen(version)) == 0) {
             
             jsmntok_t *url = objectForKey(tmp, firmwarejson, "url")->value;
             
@@ -187,6 +200,40 @@ char *getBuildManifest(char *url, int isOta){
     return buildmanifest;
 }
 
+int64_t getBBGCIDForDevice(char *deviceModel){
+    int64_t bbgcid = 0;
+#define reterror(a ... ) {error(a); bbgcid = -1; goto error;}
+    
+    char *myjson = getBBCIDJson();
+    
+    jsmntok_t *tokens = NULL;
+    int cnt = parseTokens(myjson, &tokens);
+    if (cnt < 1) reterror("[TSSC] ERROR: parsing bbgcid.json failed!\n");
+    
+    
+    jsmntok_t *device = objectForKey(tokens, myjson, deviceModel);
+    if (!device) {
+        reterror("[TSSC] ERROR: device \"%s\" is not in bbgcid.json, which means it's BasebandGoldCertID isn't documented yet.\nIf you own such a device please consider contacting @tihmstar (tihmstar@gmail.com) to get instructions how to contribute to this project.\n",deviceModel);
+    }
+    if (device->type == JSMN_PRIMITIVE) {
+        warning("[TSSC] WARNING: A BasebandGoldCertID is not required for %s\n",deviceModel);
+        bbgcid = 0;
+    }else{
+        device = device->value;
+        char * buf = malloc(device->end - device->size +1);
+        strncpy(buf, myjson+device->start,device->end - device->size);
+        buf[device->end - device->size] = 0;
+        bbgcid = atoll(buf);
+        free(buf);
+    }
+    
+error:
+    if (myjson) free(myjson);
+    if (tokens) free(tokens);
+    return bbgcid;
+#undef reterror
+}
+
 void debug_plist(plist_t plist);
 
 void getRandNum(char *dst, size_t size, int base){
@@ -196,6 +243,8 @@ void getRandNum(char *dst, size_t size, int base){
         else dst[i] = ((j = arc4random() % base) < 10) ? '0' + j : 'a' + j-10;
     }
 }
+
+#pragma mark tss functions
 
 int tss_populate_devicevals(plist_t tssreq, uint64_t ecid, char *nonce, size_t nonce_size, char *sep_nonce, size_t sep_nonce_size, int image4supported){
     
@@ -275,7 +324,7 @@ int tss_populate_random(plist_t tssreq, int is64bit){
 
 
 
-int tssrequest(plist_t *tssrequest, char *buildManifest, int64_t BbGoldCertId){
+int tssrequest(plist_t *tssrequest, char *buildManifest, char *device){
 #define reterror(a) {error(a); error = -1; goto error;}
     int error = 0;
     plist_t manifest = NULL;
@@ -302,8 +351,6 @@ int tssrequest(plist_t *tssrequest, char *buildManifest, int64_t BbGoldCertId){
     tss_populate_random(tssparameter,is64Bit);
     tss_parameters_add_from_manifest(tssparameter, id0);
     
-    debug_plist(tssparameter);
-    
     if (tss_request_add_common_tags(tssreq, tssparameter, NULL) < 0) {
         reterror("[TSSR] ERROR: Unable to add common tags to TSS request\n");
     }
@@ -323,8 +370,10 @@ int tssrequest(plist_t *tssrequest, char *buildManifest, int64_t BbGoldCertId){
     }
     
     
-#warning DEBUG
-    if (BbGoldCertId) {
+    int64_t BbGoldCertId = getBBGCIDForDevice(device);
+    if (BbGoldCertId < 0) {
+        warning("[TSSR] WARNING: there was an error getting BasebandGoldCertID, continuing without requesting Baseband ticket\n");
+    }else if (BbGoldCertId) {
         tss_populate_basebandvals(tssreq,tssparameter,BbGoldCertId);
         tss_request_add_baseband_tags(tssreq, tssparameter, NULL);
     }
@@ -339,19 +388,45 @@ error:
 #undef reterror
 }
 
-int isManifestSigned(char *buildManifest, int64_t BbGoldCertId){
-    
+int isVersionSignedForDevice(char *version, char *device, int otaFirmware, int checkBaseband){
+    int isSigned = 0;
+#define reterror(a ... ) {error(a); goto error;}
+    char *firmwareJson = NULL;
+    jsmntok_t *firmwareTokens = NULL;
+    char *url = NULL;
+    char *buildManifest = NULL;
     plist_t tssreq = NULL;
+    plist_t apticket = NULL;
     
-#warning DEBUG is64bit
-    tssrequest(&tssreq,buildManifest,BbGoldCertId);
+    firmwareJson = (otaFirmware) ? getOtaJson() : getFirmwareJson();
+    if (!firmwareJson) reterror("[TSSC] ERROR: could not get firmware.json\n");
     
-    plist_t apticket = tss_request_send(tssreq, NULL);
+    int cnt = parseTokens(firmwareJson, &firmwareTokens);
+    if (cnt < 1) reterror("[TSSC] ERROR: parsing firmware.json failed\n");
     
-    debug_plist(apticket);
+    url = getFirmwareUrl(device, version, firmwareJson, firmwareTokens, otaFirmware);
+    if (!url) reterror("[TSSC] ERROR: could not get url for device %s on iOS %s\n",device,version);
     
+    buildManifest = getBuildManifest(url, otaFirmware);
+    if (!buildManifest) reterror("[TSSC] ERROR: could not get BuildManifest for firmwareurl %s\n",url);
+    
+    
+    tssrequest(&tssreq, buildManifest, device);
+    isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
+    
+    
+    if (print_tss_response) debug_plist(apticket);
+
+    
+error:
+    if (firmwareJson) free(firmwareJson);
+    if (firmwareTokens) free(firmwareTokens);
+    if (url) free(url);
+    if (buildManifest) free(buildManifest);
     if (tssreq) plist_free(tssreq);
-    return 1;
+    if (apticket) plist_free(apticket);
+    return isSigned;
+#undef reterror
 }
 
 #pragma mark print functions
@@ -395,3 +470,50 @@ int printListOfOTAForDevice(char *firmwarejson, jsmntok_t *tokens, char *device)
     }
     return 0;
 }
+
+
+#pragma mark check functions
+
+
+int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens){
+    jsmntok_t *ctok = objectForKey(tokens, firmwareJson, "devices");
+    for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
+        if (strncmp(device, firmwareJson+tmp->start, tmp->end - tmp->start) == 0) return 1;
+        
+        if (tmp->next == ctok->value) break;
+    }
+    
+    return 0;
+}
+
+
+
+
+int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens){
+    jsmntok_t *ctok = objectForKey(tokens, firmwareJson, "devices");
+    for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
+        if (strncmp(device, firmwareJson+tmp->start, tmp->end - tmp->start) == 0){
+            jsmntok_t *firmwares = objectForKey(tmp, firmwareJson, "firmwares");
+            
+            for (jsmntok_t *tt = firmwares->value; tt ;tt = tt->next) {
+                
+                jsmntok_t *versiont = objectForKey(tt, firmwareJson, "version");
+                size_t len = versiont->value->end - versiont->value->start;
+                if (len == strlen(version) && strncmp(version, firmwareJson + versiont->value->start, len) == 0) return 1;
+            }
+            break;
+        }
+        if (tmp->next == ctok->value) break;
+    }
+    
+    return 0;
+}
+
+
+
+
+
+
+
+
+

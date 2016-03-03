@@ -46,6 +46,12 @@
 #define ECID_STRSIZE 0x20
 #define GET_RAND(min, max) ((rand() % (max - min)) + min)
 
+
+#ifdef error
+#undef error
+#endif
+#define error(a ...) if (idevicerestore_debug) printf(a)
+
 typedef struct {
 	int length;
 	char* content;
@@ -682,7 +688,7 @@ static size_t tss_write_callback(char* data, size_t size, size_t nmemb, tss_resp
 
 plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 
-	if (idevicerestore_debug) {
+	if (print_tss_request) {
 		debug_plist(tss_request);
 	}
 
@@ -744,10 +750,10 @@ plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 		} else {
 			int url_index = (retry - 1) % 6;
 			curl_easy_setopt(handle, CURLOPT_URL, urls[url_index]);
-			info("Request URL set to %s\n", urls[url_index]);
+			info("[TSSR] Request URL set to %s\n", urls[url_index]);
 		}
 
-		info("Sending TSS request attempt %d... ", retry);
+		info("[TSSR] Sending TSS request attempt %d... ", retry);
 
 		curl_easy_perform(handle);
 		curl_slist_free_all(header);
@@ -818,7 +824,7 @@ plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 
 	uint32_t tss_size = 0;
 	plist_t tss_response = NULL;
-	tss_size = response->length - (tss_data - response->content);
+	tss_size = (uint32_t)(response->length - (tss_data - response->content));
 	plist_from_xml(tss_data, tss_size, &tss_response);
 	free(response->content);
 	free(response);

@@ -19,6 +19,8 @@
 
 int dbglog;
 int idevicerestore_debug;
+int print_tss_request;
+int print_tss_response;
 
 static struct option longopts[] = {
     { "list-devices",   no_argument,       NULL, 'l' },
@@ -65,6 +67,8 @@ void cmd_list_ios(){
 
 int main(int argc, const char * argv[]) {
     
+    dbglog = 1;
+    idevicerestore_debug = 0;
     int optindex = 0;
     int opt = 0;
     long flags = 0;
@@ -105,52 +109,15 @@ int main(int argc, const char * argv[]) {
 //        }
 //    }
     
-    dbglog = 1;
-    idevicerestore_debug = 1;
     
-    printf("device=%s\nios=%s\n",device,ios);
- 
+    
     char *firmwareJson = getFirmwareJson();
+    jsmntok_t *ftokens;
+    parseTokens(firmwareJson, &ftokens);
     
-    jsmntok_t *tokensz = NULL;
+    int ret = checkFirmwareForDeviceExists("iPhones4,1", "8.4", firmwareJson, ftokens);
     
-    if (parseTokens(firmwareJson,&tokensz) <=0) {
-        printf("[JSON] ERROR parsing json failed\n");
-        return -1;
-    }
-    printListOfDevices(firmwareJson, tokensz);
-    printListOfIPSWForDevice(firmwareJson, tokensz, "iPhone4,1");
-    
-    
-    char *otaJson = getOtaJson();
-    
-    jsmntok_t *tokens = NULL;
-    
-    if (parseTokens(otaJson,&tokens) <=0) {
-        printf("[JSON] ERROR parsing json failed\n");
-        return -1;
-    }
-    printListOfOTAForDevice(otaJson, tokens, "iPhone4,1");
-    
-    
-    
-    char * url =getFirmwareUrl("iPhone4,1", "8.4.1", otaJson, tokens, 1);
-    char * url2 =getFirmwareUrl("iPhone7,2", "9.2", firmwareJson, tokensz, 0);
-    
-    printf("url=%s\n",url);
-    printf("url2=%s\n",url2);
-    
-    char * asd = getBuildManifest(url2, 0);
-
-    int ret = isManifestSigned(asd,NULL);
-    
-    
-    free(asd);
-    free(tokens);
-    free(tokensz);
-    free(otaJson);
-    free(firmwareJson);
-    
+    printf("ret=%d\n",ret);
     
     
     
