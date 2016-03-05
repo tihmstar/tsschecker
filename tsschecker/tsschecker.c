@@ -376,6 +376,8 @@ int tssrequest(plist_t *tssrequest, char *buildManifest, char *device){
     }else if (BbGoldCertId) {
         tss_populate_basebandvals(tssreq,tssparameter,BbGoldCertId);
         tss_request_add_baseband_tags(tssreq, tssparameter, NULL);
+    }else{
+        log("[TSSR] LOG: device %s doesn't need a Baseband ticket, continuing without requesting a Baseband ticket\n",device);
     }
     
     
@@ -389,6 +391,12 @@ error:
 }
 
 int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband){
+    
+    if (*version == '3' || *version - '0' < 3) {
+        info("[TSSC] WARNING: version to check \"%s\" seems to be iOS 3 or lower, which did not require SHSH or APTicket.\n\tSkipping checks and returning true.\n",version);
+        return 1;
+    }
+    
     int isSigned = 0;
 #define reterror(a ... ) {error(a); goto error;}
     char *url = NULL;
