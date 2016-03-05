@@ -64,6 +64,14 @@
       <CommandLineArguments>
          <CommandLineArgument
             argument = "--list-devices"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-o"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "--list-ios -d iPhone4,1"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

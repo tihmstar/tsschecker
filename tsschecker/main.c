@@ -66,7 +66,7 @@ int main(int argc, const char * argv[]) {
         cmd_help();
         return -1;
     }
-    while ((opt = getopt_long(argc, (char* const *)argv, "hd:i:l", longopts, &optindex)) > 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "hod:i:l", longopts, &optindex)) > 0) {
         switch (opt) {
             case 'h':
                 cmd_help();
@@ -85,10 +85,15 @@ int main(int argc, const char * argv[]) {
                 break;
             case 'l':
                 for (int i=0; longopts[i].name != NULL; i++) {
-                    if (strncmp(longopts[i].name, argv[optindex+1] + 2, strlen(longopts[i].name)) == 0) {
-                        flags |= (i == 0) ? FLAG_LIST_DEVIECS : FLAG_LIST_IOS;
-                        break;
+                    int bb = 0;
+                    for (int ii=0; ii<argc; ii++) {
+                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
+                            flags |= (i == 0) ? FLAG_LIST_DEVIECS : FLAG_LIST_IOS;
+                            bb = 1;
+                            break;
+                        }
                     }
+                    if (bb) break;
                 }
                 break;
             default:
@@ -111,17 +116,14 @@ int main(int argc, const char * argv[]) {
         printListOfDevices(firmwareJson, firmwareTokens);
     }else if (flags & FLAG_LIST_IOS){
         if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
-        if (!checkDeviceExists(device, firmwareJson, firmwareTokens)) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
-        if (flags & FLAG_OTA) {
-            printListOfOTAForDevice(firmwareJson, firmwareTokens, device);
-        }else{
-            printListOfIPSWForDevice(firmwareJson, firmwareTokens, device);
-        }
+        if (!checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
+        
+        printListOfiOSForDevice(firmwareJson, firmwareTokens, device, (flags & FLAG_OTA));
     }else{
         //request ticket
         if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
         if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
-        if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens)) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
+        if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
         
         int isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND));
         printf("\niOS %s for device %s %s being signed!\n",ios,device, (isSigned) ? "IS" : "IS NOT");

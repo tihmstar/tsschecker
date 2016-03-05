@@ -26,6 +26,8 @@
 #define MANIFEST_SAVE_PATH "/tmp/tsschecker"
 #define noncelen 20
 
+int printAllOTAFirmwares;
+
 #pragma mark getJson functions
 
 char *getBBCIDJson(){
@@ -469,41 +471,71 @@ int printListOfDevices(char *firmwarejson, jsmntok_t *tokens){
 #undef MAX_PER_LINE
 }
 
-int printListOfIPSWForDevice(char *firmwarejson, jsmntok_t *tokens, char *device){
-    
-    log("[JSON] printing ipsw list for device %s\n",device);
-    jsmntok_t *devices = objectForKey(tokens, firmwarejson, "devices");
-    jsmntok_t *mydevice = objectForKey(devices, firmwarejson, device);
-    jsmntok_t *firmwares = objectForKey(mydevice, firmwarejson, "firmwares");
-    
-    for (jsmntok_t *tmp = firmwares->value; tmp != NULL; tmp = tmp->next) {
-        jsmntok_t *ios = objectForKey(tmp, firmwarejson, "version");
-        printJString(ios->value, firmwarejson);
-        
-    }
-    return 0;
+int cmpfunc(const void * a, const void * b){
+    return strcmp(*(char**)b, *(char**)a);
 }
 
-int printListOfOTAForDevice(char *firmwarejson, jsmntok_t *tokens, char *device){
+int printListOfiOSForDevice(char *firmwarejson, jsmntok_t *tokens, char *device, int isOTA){
+#define MAX_PER_LINE 12
+    jsmntok_t *firmwares = NULL;
+    if (isOTA) {
+        log("[JSON] printing ota list for device %s\n",device);
+        jsmntok_t *mydevice = objectForKey(tokens, firmwarejson, device);
+        firmwares = objectForKey(mydevice, firmwarejson, "firmwares");
+        
+    }else{
+        log("[JSON] printing ipsw list for device %s\n",device);
+        jsmntok_t *devices = objectForKey(tokens, firmwarejson, "devices");
+        jsmntok_t *mydevice = objectForKey(devices, firmwarejson, device);
+        firmwares = objectForKey(mydevice, firmwarejson, "firmwares");
+    }
     
-    log("[JSON] printing ota list for device %s\n",device);
-    jsmntok_t *mydevice = objectForKey(tokens, firmwarejson, device);
-    jsmntok_t *firmwares = objectForKey(mydevice, firmwarejson, "firmwares");
+    int versionsCnt = firmwares->size;
+    char **versions = (char**)malloc(versionsCnt * sizeof(char *));
+    
     
     for (jsmntok_t *tmp = firmwares->value; tmp != NULL; tmp = tmp->next) {
         jsmntok_t *ios = objectForKey(tmp, firmwarejson, "version");
-        printJString(ios->value, firmwarejson);
         
+        int verslen= ios->value->end-ios->value->start;
+        versions[--versionsCnt] = (char*)malloc((verslen+1) * sizeof(char));
+        strncpy(versions[versionsCnt], firmwarejson + ios->value->start, verslen);
+        versions[versionsCnt][verslen+1] = 0;
     }
+    versionsCnt = firmwares->size;
+    qsort(versions, versionsCnt, sizeof(char *), &cmpfunc);
+    
+    int rspn = 0;
+    char currVer = 0;
+    for (int i=0; i<versionsCnt; i++) {
+        if (i){
+            int res = strcmp(versions[i-1], versions[i]);
+            free(versions[i-1]);
+            if (res == 0) continue;
+        }
+        if (currVer && currVer != *versions[i]) printf("\n\n"), rspn = 0;
+        currVer = *versions[i];
+        if (!rspn) printf("[iOS %c] ",currVer);
+        
+        
+        int printed = 0;
+        printf("%s%n",versions[i],&printed);
+        while (printed++ < 6) putchar(' ');
+        if (++rspn>= MAX_PER_LINE) putchar('\n'), rspn = 0; else putchar(' ');
+    }
+    free(versions[versionsCnt-1]);
+    free(versions);
+    
+    printf("\n\n");
     return 0;
+#undef MAX_PER_LINE
 }
 
 
 #pragma mark check functions
 
-
-int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens){
-    jsmntok_t *ctok = objectForKey(tokens, firmwareJson, "devices");
+int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens, int isOta){
+    jsmntok_t *ctok = (isOta) ? tokens : objectForKey(tokens, firmwareJson, "devices");
     for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
         if (strncmp(device, firmwareJson+tmp->start, tmp->end - tmp->start) == 0) return 1;
         
@@ -513,11 +545,8 @@ int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens){
     return 0;
 }
 
-
-
-
-int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens){
-    jsmntok_t *ctok = objectForKey(tokens, firmwareJson, "devices");
+int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens, int isOta){
+    jsmntok_t *ctok = (isOta) ? tokens : objectForKey(tokens, firmwareJson, "devices");
     for (jsmntok_t *tmp = ctok->value; ; tmp = tmp->next) {
         if (strncmp(device, firmwareJson+tmp->start, tmp->end - tmp->start) == 0){
             jsmntok_t *firmwares = objectForKey(tmp, firmwareJson, "firmwares");
