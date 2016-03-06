@@ -161,21 +161,9 @@ int main(int argc, const char * argv[]) {
         int isSigned = 0;
         if (buildmanifest) {
             if (!checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
-            info("[TSSC] opening %s\n",buildmanifest);
-            //filehandling
-            FILE *fmanifest = fopen(buildmanifest, "r");
-            if (!fmanifest) reterror(-7, "[TSSC] ERROR: file %s nof found!\n",buildmanifest);
-            fseek(fmanifest, 0, SEEK_END);
-            long fsize = ftell(fmanifest);
-            fseek(fmanifest, 0, SEEK_SET);
-            char *bufManifest = malloc(fsize + 1);
-            fread(bufManifest, fsize, 1, fmanifest);
-            fclose(fmanifest);
             
-            isSigned = isManifestSignedForDevice(bufManifest, device);
-            
-            free(bufManifest);
-            
+            isSigned = isManifestSignedForDevice(buildmanifest, device, &ios);
+
         }else{
             if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
             if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);

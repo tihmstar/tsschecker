@@ -390,13 +390,12 @@ error:
 #undef reterror
 }
 
-
-int isManifestSignedForDevice(char *buildManifest, char *device){
+int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device){
     int isSigned = 0;
     plist_t tssreq = NULL;
     plist_t apticket = NULL;
     
-    tssrequest(&tssreq, buildManifest, device);
+    tssrequest(&tssreq, buildManifestBuffer, device);
     isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
     
     
@@ -405,6 +404,41 @@ int isManifestSignedForDevice(char *buildManifest, char *device){
 error:
     if (tssreq) plist_free(tssreq);
     if (apticket) plist_free(apticket);
+    return isSigned;
+}
+
+int isManifestSignedForDevice(char *buildManifestPath, char *device, char **version){
+    int isSigned = 0;
+#define reterror(a ...) {error(a); isSigned = -1; goto error;}
+    plist_t manifest = NULL;
+    plist_t ProductVersion = NULL;
+    
+    info("[TSSC] opening %s\n",buildManifestPath);
+    //filehandling
+    FILE *fmanifest = fopen(buildManifestPath, "r");
+    if (!fmanifest) reterror("[TSSC] ERROR: file %s nof found!\n",buildManifestPath);
+    fseek(fmanifest, 0, SEEK_END);
+    long fsize = ftell(fmanifest);
+    fseek(fmanifest, 0, SEEK_SET);
+    char *bufManifest = malloc(fsize + 1);
+    fread(bufManifest, fsize, 1, fmanifest);
+    fclose(fmanifest);
+    
+    if (version && !*version){
+        plist_from_xml(bufManifest, (unsigned)strlen(bufManifest), &manifest);
+        if (!manifest){
+            warning("[TSSC] WARNING: could not find ProductVersion in BuildManifest.plist, failing to properly display iOS version\n");
+        }else{
+            ProductVersion = plist_dict_get_item(manifest, "ProductVersion");
+            plist_get_string_val(ProductVersion, version);
+        }
+    }
+    
+    isSigned = isManifestBufSignedForDevice(bufManifest, device);
+    
+error:
+    if (manifest) plist_free(manifest);
+    free(bufManifest);
     return isSigned;
 }
 
@@ -427,7 +461,7 @@ int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char
     if (!buildManifest) reterror("[TSSC] ERROR: could not get BuildManifest for firmwareurl %s\n",url);
     
     
-    isSigned = isManifestSignedForDevice(buildManifest, device);
+    isSigned = isManifestBufSignedForDevice(buildManifest, device);
     
 error:
     if (url) free(url);
