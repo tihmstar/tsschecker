@@ -67,11 +67,23 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
+            argument = "--print-tss-request"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "--print-tss-response"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
             argument = "-o"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "--list-ios -d iPhone4,1"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-d iPhone8,1 -b --build-manifest /Users/tihmstar/ipsw/leaked/iPhone8,1_10.0_14E318a_Alpha_Factory_Firmware.Restore/BuildManifest.plist"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

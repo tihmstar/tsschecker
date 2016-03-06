@@ -13,8 +13,6 @@
 #include "jsmn.h"
 #include <plist/plist.h>
 
-extern int printAllOTAFirmwares;
-
 char *getFirmwareJson();
 char *getOtaJson();
 int parseTokens(char *json, jsmntok_t **tokens);
@@ -26,6 +24,7 @@ char *getBuildManifest(char *url, int isOta);
 int64_t getBBGCIDForDevice(char *deviceModel);
 
 int tssrequest(plist_t *tssrequest, char *buildManifest, char *device);
+int isManifestSignedForDevice(char *buildManifest, char *device);
 int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband);
 
 int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens, int isOta);

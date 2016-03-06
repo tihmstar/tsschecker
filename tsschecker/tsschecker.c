@@ -26,8 +26,6 @@
 #define MANIFEST_SAVE_PATH "/tmp/tsschecker"
 #define noncelen 20
 
-int printAllOTAFirmwares;
-
 #pragma mark getJson functions
 
 char *getBBCIDJson(){
@@ -104,12 +102,12 @@ int parseTokens(char *json, jsmntok_t **tokens){
     jsmn_parser parser;
     jsmn_init(&parser);
     
-    log("[JSON] counting emlements\n");
+    log("[JSON] counting elements\n");
     unsigned int tokensCnt = jsmn_parse(&parser, json, strlen(json), NULL, 0);
     
     *tokens = (jsmntok_t*)malloc(sizeof(jsmntok_t) * tokensCnt);
     jsmn_init(&parser);
-    log("[JSON] parsing emlements\n");
+    log("[JSON] parsing elements\n");
     return jsmn_parse(&parser, json, strlen(json), *tokens, tokensCnt);
 }
 
@@ -392,6 +390,24 @@ error:
 #undef reterror
 }
 
+
+int isManifestSignedForDevice(char *buildManifest, char *device){
+    int isSigned = 0;
+    plist_t tssreq = NULL;
+    plist_t apticket = NULL;
+    
+    tssrequest(&tssreq, buildManifest, device);
+    isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
+    
+    
+    if (print_tss_response) debug_plist(apticket);
+    
+error:
+    if (tssreq) plist_free(tssreq);
+    if (apticket) plist_free(apticket);
+    return isSigned;
+}
+
 int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband){
     
     if (*version == '3' || *version - '0' < 3) {
@@ -403,8 +419,6 @@ int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char
 #define reterror(a ... ) {error(a); goto error;}
     char *url = NULL;
     char *buildManifest = NULL;
-    plist_t tssreq = NULL;
-    plist_t apticket = NULL;
     
     url = getFirmwareUrl(device, version, firmwareJson, firmwareTokens, otaFirmware);
     if (!url) reterror("[TSSC] ERROR: could not get url for device %s on iOS %s\n",device,version);
@@ -413,18 +427,11 @@ int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char
     if (!buildManifest) reterror("[TSSC] ERROR: could not get BuildManifest for firmwareurl %s\n",url);
     
     
-    tssrequest(&tssreq, buildManifest, device);
-    isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
-    
-    
-    if (print_tss_response) debug_plist(apticket);
-
+    isSigned = isManifestSignedForDevice(buildManifest, device);
     
 error:
     if (url) free(url);
     if (buildManifest) free(buildManifest);
-    if (tssreq) plist_free(tssreq);
-    if (apticket) plist_free(apticket);
     return isSigned;
 #undef reterror
 }

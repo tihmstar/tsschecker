@@ -17,6 +17,7 @@
 #define FLAG_LIST_DEVIECS   1 << 1
 #define FLAG_OTA            1 << 2
 #define FLAG_NO_BASEBAND    1 << 3
+#define FLAG_BUILDMANIFEST  1 << 4
 
 int dbglog;
 int idevicerestore_debug;
@@ -24,12 +25,15 @@ int print_tss_request;
 int print_tss_response;
 
 static struct option longopts[] = {
-    { "list-devices",   no_argument,       NULL, 'l' },
-    { "list-ios",       no_argument,       NULL, 'l' },
+    { "list-devices",         no_argument,       NULL, 'l' },
+    { "list-ios",             no_argument,       NULL, 'l' },
+    { "build-manifest",       required_argument, NULL, '0' },
+    { "print-tss-request",    no_argument,       NULL, '1' },
+    { "print-tss-response",   no_argument,       NULL, '1' },
     { "device",         required_argument, NULL, 'd' },
     { "ios",            required_argument, NULL, 'i' },
     { "help",           no_argument,       NULL, 'h' },
-    { "no-baseband",       no_argument,       NULL, 'b' },
+    { "no-baseband",    no_argument,       NULL, 'b' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -44,6 +48,10 @@ void cmd_help(){
     printf("  -b, --no-baseband\t\tdon't check baseband signing status. Request a ticket without baseband\n");
     printf("      --list-devices\t\tlist all known devices\n");
     printf("      --list-ios\t\tlist all known ios versions\n");
+    printf("      --build-manifest\tmanually specify buildmanifest. (use with -d)\n");
+    printf("      --print-tss-request\n");
+    printf("      --print-tss-response\n");
+    
 //    printf("  -a, --add\t\tadd connected devices to list of know devices\n");
 //    printf("           \t\tthese devices' ECID will be used to check tss status instead of random values\n");
 //    printf("           \t\tshsh blobs are saved for these devices in case the version is signed\n");
@@ -61,12 +69,13 @@ int main(int argc, const char * argv[]) {
     
     char *device = 0;
     char *ios = 0;
+    char *buildmanifest = 0;
     
     if (argc == 1){
         cmd_help();
         return -1;
     }
-    while ((opt = getopt_long(argc, (char* const *)argv, "hod:i:l", longopts, &optindex)) > 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "hbo1d:0:i:l", longopts, &optindex)) > 0) {
         switch (opt) {
             case 'h':
                 cmd_help();
@@ -83,6 +92,23 @@ int main(int argc, const char * argv[]) {
             case 'o':
                 flags |= FLAG_OTA;
                 break;
+            case '0':
+                for (int i=0; longopts[i].name != NULL; i++) {
+                    int bb = 0;
+                    for (int ii=0; ii<argc; ii++) {
+                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
+                            if (i == 2) {
+                                flags |= FLAG_BUILDMANIFEST;
+                                buildmanifest = optarg;
+                                
+                                bb = 1;
+                                break;
+                            }
+                        }
+                    }
+                    if (bb) break;
+                }
+                break;
             case 'l':
                 for (int i=0; longopts[i].name != NULL; i++) {
                     int bb = 0;
@@ -91,6 +117,20 @@ int main(int argc, const char * argv[]) {
                             flags |= (i == 0) ? FLAG_LIST_DEVIECS : FLAG_LIST_IOS;
                             bb = 1;
                             break;
+                        }
+                    }
+                    if (bb) break;
+                }
+                break;
+            case '1':
+                for (int i=0; longopts[i].name != NULL; i++) {
+                    int bb = 0;
+                    for (int ii=0; ii<argc; ii++) {
+                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
+                            print_tss_request = print_tss_response = 1;
+#warning BIG BUG HERE!
+                            if (i == 3 ) print_tss_request = bb = 1;
+                            if (i == 4) print_tss_response = bb = 1;
                         }
                     }
                     if (bb) break;
@@ -122,10 +162,31 @@ int main(int argc, const char * argv[]) {
     }else{
         //request ticket
         if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
-        if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
-        if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
+        int isSigned = 0;
+        if (buildmanifest) {
+            if (!checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
+            info("[TSSC] opening %s\n",buildmanifest);
+            //filehandling
+            FILE *fmanifest = fopen(buildmanifest, "r");
+            if (!fmanifest) reterror(-7, "[TSSC] ERROR: file %s nof found!\n",buildmanifest);
+            fseek(fmanifest, 0, SEEK_END);
+            long fsize = ftell(fmanifest);
+            fseek(fmanifest, 0, SEEK_SET);
+            char *bufManifest = malloc(fsize + 1);
+            fread(bufManifest, fsize, 1, fmanifest);
+            fclose(fmanifest);
+            
+            isSigned = isManifestSignedForDevice(bufManifest, device);
+            
+            free(bufManifest);
+            
+        }else{
+            if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
+            if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
+            
+            isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND));
+        }
         
-        int isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND));
         printf("\niOS %s for device %s %s being signed!\n",ios,device, (isSigned) ? "IS" : "IS NOT");
     }
     
