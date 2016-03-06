@@ -124,16 +124,12 @@ int main(int argc, const char * argv[]) {
                 break;
             case '1':
                 for (int i=0; longopts[i].name != NULL; i++) {
-                    int bb = 0;
                     for (int ii=0; ii<argc; ii++) {
                         if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
-                            print_tss_request = print_tss_response = 1;
-#warning BIG BUG HERE!
-                            if (i == 3 ) print_tss_request = bb = 1;
-                            if (i == 4) print_tss_response = bb = 1;
+                            if (i == 3) print_tss_request = 1;
+                            if (i == 4) print_tss_response = 1;
                         }
                     }
-                    if (bb) break;
                 }
                 break;
             default:
