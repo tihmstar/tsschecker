@@ -19,14 +19,14 @@ int parseTokens(char *json, jsmntok_t **tokens);
 int printListOfDevices(char *firmwarejson, jsmntok_t *tokens);
 int printListOfiOSForDevice(char *firmwarejson, jsmntok_t *tokens, char *device, int isOTA);
 
-char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *tokens, int isOta);
+char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *tokens, int isOta, int useBeta);
 char *getBuildManifest(char *url, int isOta);
 int64_t getBBGCIDForDevice(char *deviceModel);
 
-int tssrequest(plist_t *tssrequest, char *buildManifest, char *device);
-int isManifestSignedForDevice(char *buildManifestPath, char *device, char **version);
-int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device);
-int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband);
+int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, int checkBaseband);
+int isManifestSignedForDevice(char *buildManifestPath, char **device, int checkBaseband, char **version);
+int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device, int checkBaseband);
+int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband, int useBeta);
 
 int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens, int isOta);
 int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens, int isOta);

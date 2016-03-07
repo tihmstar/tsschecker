@@ -18,6 +18,7 @@
 #define FLAG_OTA            1 << 2
 #define FLAG_NO_BASEBAND    1 << 3
 #define FLAG_BUILDMANIFEST  1 << 4
+#define FLAG_BETA           1 << 5
 
 int dbglog;
 int idevicerestore_debug;
@@ -30,6 +31,7 @@ static struct option longopts[] = {
     { "build-manifest",       required_argument, NULL, '0' },
     { "print-tss-request",    no_argument,       NULL, '1' },
     { "print-tss-response",   no_argument,       NULL, '1' },
+    { "beta",                 no_argument,       NULL, '1' },
     { "device",         required_argument, NULL, 'd' },
     { "ios",            required_argument, NULL, 'i' },
     { "help",           no_argument,       NULL, 'h' },
@@ -45,10 +47,11 @@ void cmd_help(){
     printf("  -i, --ios VERSION\tspecific iOS version (eg. 6.1.3)\n");
     printf("  -h, --help\t\tprints usage information\n");
     printf("  -o, --ota\t\tcheck OTA signing status, instead of normal restore\n");
-    printf("  -b, --no-baseband\t\tdon't check baseband signing status. Request a ticket without baseband\n");
-    printf("      --list-devices\t\tlist all known devices\n");
-    printf("      --list-ios\t\tlist all known ios versions\n");
-    printf("      --build-manifest\tmanually specify buildmanifest. (use with -d)\n");
+    printf("  -b, --no-baseband\tdon't check baseband signing status. Request a ticket without baseband\n");
+    printf("      --beta\t\trequest ticket for beta instead of normal relase (use with -o)\n");
+    printf("      --list-devices\tlist all known devices\n");
+    printf("      --list-ios\tlist all known ios versions\n");
+    printf("      --build-manifest\tmanually specify buildmanifest. (can be used with -d)\n");
     printf("      --print-tss-request\n");
     printf("      --print-tss-response\n");
     
@@ -128,6 +131,7 @@ int main(int argc, const char * argv[]) {
                         if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
                             if (i == 3) print_tss_request = 1;
                             if (i == 4) print_tss_response = 1;
+                            if (i == 5) flags |= FLAG_BETA;
                         }
                     }
                 }
@@ -138,6 +142,7 @@ int main(int argc, const char * argv[]) {
         }
     }
     int err = 0;
+    int isSigned = 0;
     char *firmwareJson = NULL;
     jsmntok_t *firmwareTokens = NULL;
 #define reterror(code,a ...) {error(a); err = code; goto error;}
@@ -146,7 +151,7 @@ int main(int argc, const char * argv[]) {
     if (!firmwareJson) reterror(-6,"[TSSC] ERROR: could not get firmware.json\n");
     
     int cnt = parseTokens(firmwareJson, &firmwareTokens);
-    if (cnt < 1) reterror(-2,"[TSSC] ERROR: parsing firmware.json failed\n");
+    if (cnt < 1) reterror(-2,"[TSSC] ERROR: parsing %s.json failed\n",(flags & FLAG_OTA) ? "ota" : "firmware");
     
     if (flags & FLAG_LIST_DEVIECS) {
         printListOfDevices(firmwareJson, firmwareTokens);
@@ -157,18 +162,17 @@ int main(int argc, const char * argv[]) {
         printListOfiOSForDevice(firmwareJson, firmwareTokens, device, (flags & FLAG_OTA));
     }else{
         //request ticket
-        if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
-        int isSigned = 0;
         if (buildmanifest) {
-            if (!checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
+            if (device && !checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
             
-            isSigned = isManifestSignedForDevice(buildmanifest, device, &ios);
+            isSigned = isManifestSignedForDevice(buildmanifest, &device, !(flags & FLAG_NO_BASEBAND), &ios);
 
         }else{
+            if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
             if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
             if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
             
-            isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND));
+            isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND), (flags & FLAG_BETA));
         }
         
         printf("\niOS %s for device %s %s being signed!\n",ios,device, (isSigned) ? "IS" : "IS NOT");
@@ -179,6 +183,6 @@ int main(int argc, const char * argv[]) {
 error:
     if (firmwareJson) free(firmwareJson);
     if (firmwareTokens) free(firmwareTokens);
-    return err;
+    return err ? err : isSigned;
 #undef reterror
 }
