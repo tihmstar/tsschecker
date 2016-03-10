@@ -30,6 +30,9 @@ extern "C" {
 
 #include <plist/plist.h>
 
+extern int print_tss_request;
+
+    
 /* parameters */
 int tss_parameters_add_from_manifest(plist_t parameters, plist_t build_identity);
 

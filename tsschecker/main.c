@@ -22,8 +22,6 @@
 
 int dbglog;
 int idevicerestore_debug;
-int print_tss_request;
-int print_tss_response;
 
 static struct option longopts[] = {
     { "list-devices",         no_argument,       NULL, 'l' },
@@ -32,8 +30,10 @@ static struct option longopts[] = {
     { "print-tss-request",    no_argument,       NULL, '1' },
     { "print-tss-response",   no_argument,       NULL, '1' },
     { "beta",                 no_argument,       NULL, '1' },
+    { "nocache",              no_argument,       NULL, '1' },
     { "device",         required_argument, NULL, 'd' },
     { "ios",            required_argument, NULL, 'i' },
+    { "ecid",           required_argument, NULL, 'e' },
     { "help",           no_argument,       NULL, 'h' },
     { "no-baseband",    no_argument,       NULL, 'b' },
     { NULL, 0, NULL, 0 }
@@ -48,17 +48,51 @@ void cmd_help(){
     printf("  -h, --help\t\tprints usage information\n");
     printf("  -o, --ota\t\tcheck OTA signing status, instead of normal restore\n");
     printf("  -b, --no-baseband\tdon't check baseband signing status. Request a ticket without baseband\n");
+    printf("  -e, --ecid ECID\tmanually specify ECID to be used for fetching blobs, instead of using random ones\n");
+    printf("                 \tECID must be either dec or hex eg. 5482657301265 or ab46efcbf71\n");
     printf("      --beta\t\trequest ticket for beta instead of normal relase (use with -o)\n");
     printf("      --list-devices\tlist all known devices\n");
     printf("      --list-ios\tlist all known ios versions\n");
     printf("      --build-manifest\tmanually specify buildmanifest. (can be used with -d)\n");
+    printf("      --nocache       \tignore caches and redownload required files\n");
     printf("      --print-tss-request\n");
     printf("      --print-tss-response\n");
-    
-//    printf("  -a, --add\t\tadd connected devices to list of know devices\n");
-//    printf("           \t\tthese devices' ECID will be used to check tss status instead of random values\n");
-//    printf("           \t\tshsh blobs are saved for these devices in case the version is signed\n");
     printf("\n");
+}
+
+int64_t parseECID(const char *ecid){
+    const char *ecidBK = ecid;
+    int isHex = 0;
+    int64_t ret = 0;
+    
+    while (*ecid && !isHex) {
+        char c = *(ecid++);
+        if (c >= '0' && c<='9') {
+            ret *=10;
+            ret += c - '0';
+        }else{
+            isHex = 1;
+            ret = 0;
+        }
+    }
+    
+    if (isHex) {
+        while (*ecidBK) {
+            char c = *(ecidBK++);
+            ret *=16;
+            if (c >= '0' && c<='9') {
+                ret += c - '0';
+            }else if (c >= 'a' && c <= 'f'){
+                ret += 10 + c - 'a';
+            }else if (c >= 'A' && c <= 'F'){
+                ret += 10 + c - 'A';
+            }else{
+                return -1; //ERROR parsing failed
+            }
+        }
+    }
+    
+    return ret;
 }
 
 int main(int argc, const char * argv[]) {
@@ -73,12 +107,13 @@ int main(int argc, const char * argv[]) {
     char *device = 0;
     char *ios = 0;
     char *buildmanifest = 0;
+    char *ecid = 0;
     
     if (argc == 1){
         cmd_help();
         return -1;
     }
-    while ((opt = getopt_long(argc, (char* const *)argv, "hbo1d:0:i:l", longopts, &optindex)) > 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "hbo1e:d:0:i:l", longopts, &optindex)) > 0) {
         switch (opt) {
             case 'h':
                 cmd_help();
@@ -88,6 +123,9 @@ int main(int argc, const char * argv[]) {
                 break;
             case 'i':
                 ios = optarg;
+                break;
+            case 'e':
+                ecid = optarg;
                 break;
             case 'b':
                 flags |= FLAG_NO_BASEBAND;
@@ -132,6 +170,7 @@ int main(int argc, const char * argv[]) {
                             if (i == 3) print_tss_request = 1;
                             if (i == 4) print_tss_response = 1;
                             if (i == 5) flags |= FLAG_BETA;
+                            if (i == 6) nocache = 1;
                         }
                     }
                 }
@@ -145,7 +184,18 @@ int main(int argc, const char * argv[]) {
     int isSigned = 0;
     char *firmwareJson = NULL;
     jsmntok_t *firmwareTokens = NULL;
+    int64_t ecidNum = 0;
 #define reterror(code,a ...) {error(a); err = code; goto error;}
+    
+    if (ecid) {
+        if ((ecidNum = parseECID(ecid)) <0){
+            reterror(-7, "[TSSC] ERROR: manually specified ecid=%s, but parsing failed\n",ecid);
+        }else{
+            info("[TSSC] manually specified ecid to use, parsed \"%s\" to dec:%lld hex:%llx\n",ecid,ecidNum,ecidNum);
+        }
+    }
+    
+    
     
     firmwareJson = (flags & FLAG_OTA) ? getOtaJson() : getFirmwareJson();
     if (!firmwareJson) reterror(-6,"[TSSC] ERROR: could not get firmware.json\n");
@@ -165,14 +215,14 @@ int main(int argc, const char * argv[]) {
         if (buildmanifest) {
             if (device && !checkDeviceExists(device, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-4,"[TSSC] ERROR: device %s could not be found in devicelist\n",device);
             
-            isSigned = isManifestSignedForDevice(buildmanifest, &device, !(flags & FLAG_NO_BASEBAND), &ios);
+            isSigned = isManifestSignedForDevice(buildmanifest, &device, ecidNum, !(flags & FLAG_NO_BASEBAND), &ios);
 
         }else{
             if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
             if (!ios) reterror(-5,"[TSSC] ERROR: please specify an iOS version for this option\n\tuse -h for more help\n");
             if (!checkFirmwareForDeviceExists(device, ios, firmwareJson, firmwareTokens, (flags & FLAG_OTA))) reterror(-6, "[TSSC] ERROR: either device %s does not exist, or there is no iOS %s for it.\n",device,ios);
             
-            isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND), (flags & FLAG_BETA));
+            isSigned = isVersionSignedForDevice(firmwareJson, firmwareTokens, ios, device, ecidNum, (flags & FLAG_OTA), !(flags & FLAG_NO_BASEBAND), (flags & FLAG_BETA));
         }
         
         printf("\niOS %s for device %s %s being signed!\n",ios,device, (isSigned) ? "IS" : "IS NOT");

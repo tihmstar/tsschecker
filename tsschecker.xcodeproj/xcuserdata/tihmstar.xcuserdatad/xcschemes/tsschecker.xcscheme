@@ -67,20 +67,24 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--beta"
-            isEnabled = "YES">
+            argument = "-e 1c255c300be026"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "-d iPhone4,1 -i 8.4.1"
-            isEnabled = "YES">
+            argument = "--beta"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-d iPhone7,2 -i 9.3"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-o"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "--list-ios -d iPhone4,1"
-            isEnabled = "NO">
+            argument = "-o -d iPhone4,1 -i 9.2"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-d iPhone8,1 -b --build-manifest /Users/tihmstar/ipsw/leaked/iPhone8,1_10.0_14E318a_Alpha_Factory_Firmware.Restore/BuildManifest.plist"

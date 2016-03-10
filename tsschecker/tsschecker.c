@@ -28,10 +28,14 @@
 
 #pragma mark getJson functions
 
+int print_tss_request;
+int print_tss_response;
+int nocache;
+
 char *getBBCIDJson(){
     info("[TSSC] opening bbgcid.json\n");
     FILE *f = fopen(BBGCID_JSON_PATH, "rb");
-    if (!f){
+    if (!f || nocache){
         downloadFile(BBGCID_JSON_URL, BBGCID_JSON_PATH);
         f = fopen(BBGCID_JSON_PATH, "rb");
     }
@@ -47,7 +51,7 @@ char *getBBCIDJson(){
 char *getFirmwareJson(){
     info("[TSSC] opening firmware.json\n");
     FILE *f = fopen(FIRMWARE_JSON_PATH, "rb");
-    if (!f){
+    if (!f || nocache){
         downloadFile(FIRMWARE_JSON_URL, FIRMWARE_JSON_PATH);
         f = fopen(FIRMWARE_JSON_PATH, "rb");
     }
@@ -63,7 +67,7 @@ char *getFirmwareJson(){
 char *getOtaJson(){
     info("[TSSC] opening ota.json\n");
     FILE *f = fopen(FIRMWARE_OTA_JSON_PATH, "rb");
-    if (!f){
+    if (!f || nocache){
         downloadFile(FIRMWARE_OTA_JSON_URL, FIRMWARE_OTA_JSON_PATH);
         f = fopen(FIRMWARE_OTA_JSON_PATH, "rb");
     }
@@ -122,8 +126,6 @@ char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *
     for (jsmntok_t *tmp = firmwares->value; tmp != NULL; tmp = tmp->next) {
         jsmntok_t *ios = objectForKey(tmp, firmwarejson, "version");
         if (ios->value->end - ios->value->start == strlen(version) && strncmp(version, firmwarejson + ios->value->start, strlen(version)) == 0) {
-            
-            char *vtest = firmwarejson +ios->value->start;
             
             if (isOta) {
                 jsmntok_t *releaseType = NULL;
@@ -186,7 +188,7 @@ char *getBuildManifest(char *url, int isOta){
     info("[TSSC] opening Buildmanifest for %s\n",name);
     FILE *f = fopen(fileDir, "rb");
     
-    if (!f){
+    if (!f || nocache){
         //download if it isn't there
         if (downloadPartialzip(url, (isOta) ? "AssetData/boot/BuildManifest.plist" : "BuildManifest.plist", fileDir)){
             free(fileDir);
@@ -312,13 +314,12 @@ int tss_populate_basebandvals(plist_t tssreq, plist_t tssparameters, int64_t BbG
     return 0;
 }
 
-int tss_populate_random(plist_t tssreq, int is64bit){
-    uint64_t ecid = 0;
+int tss_populate_random(plist_t tssreq, int is64bit, uint64_t ecid){
     char nonce[noncelen+1];
     char sep_nonce[noncelen+1];
     
     int n=0;
-    for (int i=0; i<16; i++) ecid += (arc4random() % 10) * pow(10, n++);
+    if (!ecid) for (int i=0; i<16; i++) ecid += (arc4random() % 10) * pow(10, n++);
     getRandNum(nonce, noncelen, 256);
     getRandNum(sep_nonce, noncelen, 256);
     
@@ -333,7 +334,7 @@ int tss_populate_random(plist_t tssreq, int is64bit){
 
 
 
-int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, int checkBaseband){
+int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, uint64_t ecid, int checkBaseband){
 #define reterror(a) {error(a); error = -1; goto error;}
     int error = 0;
     plist_t manifest = NULL;
@@ -357,7 +358,7 @@ int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, int check
     plist_t sep = plist_dict_get_item(manifestdict, "SEP");
     int is64Bit = !(!sep || plist_get_node_type(sep) != PLIST_DICT);
     
-    tss_populate_random(tssparameter,is64Bit);
+    tss_populate_random(tssparameter,is64Bit,ecid);
     tss_parameters_add_from_manifest(tssparameter, id0);
     
     if (tss_request_add_common_tags(tssreq, tssparameter, NULL) < 0) {
@@ -402,12 +403,12 @@ error:
 #undef reterror
 }
 
-int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device, int checkBaseband){
+int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device, uint64_t ecid, int checkBaseband){
     int isSigned = 0;
     plist_t tssreq = NULL;
     plist_t apticket = NULL;
     
-    tssrequest(&tssreq, buildManifestBuffer, device, checkBaseband);
+    tssrequest(&tssreq, buildManifestBuffer, device, ecid, checkBaseband);
     isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
     
     
@@ -419,7 +420,7 @@ error:
     return isSigned;
 }
 
-int isManifestSignedForDevice(char *buildManifestPath, char **device, int checkBaseband, char **version){
+int isManifestSignedForDevice(char *buildManifestPath, char **device, uint64_t ecid, int checkBaseband, char **version){
     int isSigned = 0;
 #define reterror(a ...) {error(a); isSigned = -1; goto error;}
     plist_t manifest = NULL;
@@ -434,7 +435,7 @@ int isManifestSignedForDevice(char *buildManifestPath, char **device, int checkB
     fseek(fmanifest, 0, SEEK_END);
     long fsize = ftell(fmanifest);
     fseek(fmanifest, 0, SEEK_SET);
-    char *bufManifest = malloc(fsize + 1);
+    char *bufManifest = (char*)malloc(fsize + 1);
     fread(bufManifest, fsize, 1, fmanifest);
     fclose(fmanifest);
     
@@ -459,15 +460,16 @@ int isManifestSignedForDevice(char *buildManifestPath, char **device, int checkB
         else info("[TSSR] requesting ticket for %s\n",*device);
     }
     
-    isSigned = isManifestBufSignedForDevice(bufManifest, *device, checkBaseband);
+    isSigned = isManifestBufSignedForDevice(bufManifest, *device, ecid, checkBaseband);
     
 error:
     if (manifest) plist_free(manifest);
     free(bufManifest);
     return isSigned;
+#undef reterror
 }
 
-int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband, int useBeta){
+int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, uint64_t ecid, int otaFirmware, int checkBaseband, int useBeta){
     
     if (*version == '3' || *version - '0' < 3) {
         info("[TSSC] WARNING: version to check \"%s\" seems to be iOS 3 or lower, which did not require SHSH or APTicket.\n\tSkipping checks and returning true.\n",version);
@@ -486,7 +488,7 @@ int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char
     if (!buildManifest) reterror("[TSSC] ERROR: could not get BuildManifest for firmwareurl %s\n",url);
     
     
-    isSigned = isManifestBufSignedForDevice(buildManifest, device, checkBaseband);
+    isSigned = isManifestBufSignedForDevice(buildManifest, device, ecid, checkBaseband);
     
 error:
     if (url) free(url);

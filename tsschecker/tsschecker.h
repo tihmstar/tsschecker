@@ -12,6 +12,10 @@
 #include <stdio.h>
 #include "jsmn.h"
 #include <plist/plist.h>
+#include "tss.h"
+
+extern int print_tss_response;
+extern int nocache;
 
 char *getFirmwareJson();
 char *getOtaJson();
@@ -23,10 +27,10 @@ char *getFirmwareUrl(char *device, char *version,char *firmwarejson, jsmntok_t *
 char *getBuildManifest(char *url, int isOta);
 int64_t getBBGCIDForDevice(char *deviceModel);
 
-int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, int checkBaseband);
-int isManifestSignedForDevice(char *buildManifestPath, char **device, int checkBaseband, char **version);
-int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device, int checkBaseband);
-int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, int otaFirmware, int checkBaseband, int useBeta);
+int tssrequest(plist_t *tssrequest, char *buildManifest, char *device, uint64_t ecid, int checkBaseband);
+int isManifestSignedForDevice(char *buildbManifestPath, char **device, uint64_t ecid, int checkBaseband, char **version);
+int isManifestBufSignedForDevice(char *buildManifestBuffer, char *device, uint64_t ecid, int checkBaseband);
+int isVersionSignedForDevice(char *firmwareJson, jsmntok_t *firmwareTokens, char *version, char *device, uint64_t ecid, int otaFirmware, int checkBaseband, int useBeta);
 
 int checkDeviceExists(char *device, char *firmwareJson, jsmntok_t *tokens, int isOta);
 int checkFirmwareForDeviceExists(char *device, char *version, char *firmwareJson, jsmntok_t *tokens, int isOta);
