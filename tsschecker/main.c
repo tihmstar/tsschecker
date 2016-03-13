@@ -14,7 +14,7 @@
 #include "tsschecker.h"
 
 #define FLAG_LIST_IOS       1 << 0
-#define FLAG_LIST_DEVIECS   1 << 1
+#define FLAG_LIST_DEVICES   1 << 1
 #define FLAG_OTA            1 << 2
 #define FLAG_NO_BASEBAND    1 << 3
 #define FLAG_BUILDMANIFEST  1 << 4
@@ -24,13 +24,13 @@ int dbglog;
 int idevicerestore_debug;
 
 static struct option longopts[] = {
-    { "list-devices",         no_argument,       NULL, 'l' },
-    { "list-ios",             no_argument,       NULL, 'l' },
-    { "build-manifest",       required_argument, NULL, '0' },
-    { "print-tss-request",    no_argument,       NULL, '1' },
-    { "print-tss-response",   no_argument,       NULL, '1' },
-    { "beta",                 no_argument,       NULL, '1' },
-    { "nocache",              no_argument,       NULL, '1' },
+    { "list-devices",         no_argument,       NULL, 'p' },
+    { "list-ios",             no_argument,       NULL, 'q' },
+    { "build-manifest",       required_argument, NULL, 'r' },
+    { "print-tss-request",    no_argument,       NULL, 's' },
+    { "print-tss-response",   no_argument,       NULL, 't' },
+    { "beta",                 no_argument,       NULL, 'u' },
+    { "nocache",              no_argument,       NULL, 'w' }, // skipping 'v' in case version print will be added
     { "device",         required_argument, NULL, 'd' },
     { "ios",            required_argument, NULL, 'i' },
     { "ecid",           required_argument, NULL, 'e' },
@@ -113,67 +113,47 @@ int main(int argc, const char * argv[]) {
         cmd_help();
         return -1;
     }
-    while ((opt = getopt_long(argc, (char* const *)argv, "hbo1e:d:0:i:l", longopts, &optindex)) > 0) {
+    while ((opt = getopt_long(argc, (char* const *)argv, "d:i:e:hbo", longopts, &optindex)) > 0) {
         switch (opt) {
-            case 'h':
+            case 'h': // long option: "help"; can be called as short option
                 cmd_help();
                 return 0;
-            case 'd':
+            case 'd': // long option: "device"; can be called as short option
                 device = optarg;
                 break;
-            case 'i':
+            case 'i': // long option: "ios"; can be called as short option
                 ios = optarg;
                 break;
-            case 'e':
+            case 'e': // long option: "ecid"; can be called as short option
                 ecid = optarg;
                 break;
-            case 'b':
+            case 'b': // long option: "no-baseband"; can be called as short option
                 flags |= FLAG_NO_BASEBAND;
                 break;
-            case 'o':
+            case 'o': // only short option (stands for ota)
                 flags |= FLAG_OTA;
                 break;
-            case '0':
-                for (int i=0; longopts[i].name != NULL; i++) {
-                    int bb = 0;
-                    for (int ii=0; ii<argc; ii++) {
-                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
-                            if (i == 2) {
-                                flags |= FLAG_BUILDMANIFEST;
-                                buildmanifest = optarg;
-                                
-                                bb = 1;
-                                break;
-                            }
-                        }
-                    }
-                    if (bb) break;
-                }
+            case 'p': // only long option: "list-devices"
+                flags |= FLAG_LIST_DEVICES;
                 break;
-            case 'l':
-                for (int i=0; longopts[i].name != NULL; i++) {
-                    int bb = 0;
-                    for (int ii=0; ii<argc; ii++) {
-                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
-                            flags |= (i == 0) ? FLAG_LIST_DEVIECS : FLAG_LIST_IOS;
-                            bb = 1;
-                            break;
-                        }
-                    }
-                    if (bb) break;
-                }
+            case 'q': // only long option: "list-ios"
+                flags |= FLAG_LIST_IOS;
                 break;
-            case '1':
-                for (int i=0; longopts[i].name != NULL; i++) {
-                    for (int ii=0; ii<argc; ii++) {
-                        if (strlen(argv[ii]) > 2 && strncmp(longopts[i].name, argv[ii] + 2, strlen(longopts[i].name)) == 0) {
-                            if (i == 3) print_tss_request = 1;
-                            if (i == 4) print_tss_response = 1;
-                            if (i == 5) flags |= FLAG_BETA;
-                            if (i == 6) nocache = 1;
-                        }
-                    }
-                }
+            case 'r': // only long option: "build-manifest"
+                flags |= FLAG_BUILDMANIFEST;
+                buildmanifest = optarg;
+                break;
+            case 's': // only long option: "print-tss-request"
+                print_tss_request = 1;
+                break;
+            case 't': // only long option: "print-tss-response"
+                print_tss_response = 1;
+                break;
+            case 'u': // only long option: "beta"
+                flags |= FLAG_BETA;
+                break;
+            case 'w': // only long option: "nocache"
+                nocache = 1;
                 break;
             default:
                 cmd_help();
@@ -203,7 +183,7 @@ int main(int argc, const char * argv[]) {
     int cnt = parseTokens(firmwareJson, &firmwareTokens);
     if (cnt < 1) reterror(-2,"[TSSC] ERROR: parsing %s.json failed\n",(flags & FLAG_OTA) ? "ota" : "firmware");
     
-    if (flags & FLAG_LIST_DEVIECS) {
+    if (flags & FLAG_LIST_DEVICES) {
         printListOfDevices(firmwareJson, firmwareTokens);
     }else if (flags & FLAG_LIST_IOS){
         if (!device) reterror(-3,"[TSSC] ERROR: please specify a device for this option\n\tuse -h for more help\n");
