@@ -24,13 +24,13 @@ int dbglog;
 int idevicerestore_debug;
 
 static struct option longopts[] = {
-    { "list-devices",         no_argument,       NULL, 'p' },
-    { "list-ios",             no_argument,       NULL, 'q' },
-    { "build-manifest",       required_argument, NULL, 'r' },
-    { "print-tss-request",    no_argument,       NULL, 's' },
-    { "print-tss-response",   no_argument,       NULL, 't' },
-    { "beta",                 no_argument,       NULL, 'u' },
-    { "nocache",              no_argument,       NULL, 'w' }, // skipping 'v' in case version print will be added
+    { "list-devices",         no_argument,       NULL, '1' },
+    { "list-ios",             no_argument,       NULL, '2' },
+    { "build-manifest",       required_argument, NULL, '3' },
+    { "print-tss-request",    no_argument,       NULL, '4' },
+    { "print-tss-response",   no_argument,       NULL, '5' },
+    { "beta",                 no_argument,       NULL, '6' },
+    { "nocache",              no_argument,       NULL, '7' },
     { "device",         required_argument, NULL, 'd' },
     { "ios",            required_argument, NULL, 'i' },
     { "ecid",           required_argument, NULL, 'e' },
@@ -134,26 +134,26 @@ int main(int argc, const char * argv[]) {
             case 'o': // long option: "ota"; can be called as short option
                 flags |= FLAG_OTA;
                 break;
-            case 'p': // only long option: "list-devices"
+            case '1': // only long option: "list-devices"
                 flags |= FLAG_LIST_DEVICES;
                 break;
-            case 'q': // only long option: "list-ios"
+            case '2': // only long option: "list-ios"
                 flags |= FLAG_LIST_IOS;
                 break;
-            case 'r': // only long option: "build-manifest"
+            case '3': // only long option: "build-manifest"
                 flags |= FLAG_BUILDMANIFEST;
                 buildmanifest = optarg;
                 break;
-            case 's': // only long option: "print-tss-request"
+            case '4': // only long option: "print-tss-request"
                 print_tss_request = 1;
                 break;
-            case 't': // only long option: "print-tss-response"
+            case '5': // only long option: "print-tss-response"
                 print_tss_response = 1;
                 break;
-            case 'u': // only long option: "beta"
+            case '6': // only long option: "beta"
                 flags |= FLAG_BETA;
                 break;
-            case 'w': // only long option: "nocache"
+            case '7': // only long option: "nocache"
                 nocache = 1;
                 break;
             default:
