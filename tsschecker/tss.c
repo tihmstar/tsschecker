@@ -1,6 +1,6 @@
 /*
  * tss.c
- * Functions for communicating with Apple's TSS server
+ * Functions for communicating with Cydia's TSS server
  *
  * Copyright (c) 2010-2013 Martin Szulecki. All Rights Reserved.
  * Copyright (c) 2012 Nikias Bassen. All Rights Reserved.
@@ -701,12 +701,12 @@ plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 	char curl_error_message[CURL_ERROR_SIZE];
 
 	const char* urls[6] = {
-		"https://gs.apple.com/TSS/controller?action=2",
-		"https://17.171.36.30/TSS/controller?action=2",
-		"https://17.151.36.30/TSS/controller?action=2",
-		"http://gs.apple.com/TSS/controller?action=2",
-		"http://17.171.36.30/TSS/controller?action=2",
-		"http://17.151.36.30/TSS/controller?action=2"
+		"https://cydia.saurik.com/TSS/controller?action=2",
+		"https://174.35.52.184/TSS/controller?action=2",
+		"https://174.35.52.180/TSS/controller?action=2",
+		"http://cydia.saurik.com/TSS/controller?action=2",
+		"http://174.35.52.184/TSS/controller?action=2",
+		"http://174.35.52.180/TSS/controller?action=2"
 	};
     
 	plist_to_xml(tss_request, &request, &size);
