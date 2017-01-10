@@ -50,3 +50,34 @@ Usage: `tsschecker [OPTIONS]`
 |                |`--nocache`       	     | ignore caches and re-download required files                                      |
 |                |`--print-tss-request`      | prints tss request that will be sent (plist)                                      |
 |                |`--print-tss-response`     | prints tss response that come from Apple (plist)                                  |
+
+### Compiling   
+Ensure you have the packages listed under the dependencies section:
+```
+git clone https://github.com/tihmstar/libirecovery
+cd ./libirecovery && bash autogen.sh && make install
+
+git clone https://github.com/tihmstar/libcrippy
+cd ./libcrippy && bash autogen.sh && make install
+
+git clone https://github.com/tihmstar/libfragmentzip
+cd ./libfragmentzip && bash autogen.sh && make install
+
+git clone https://github.com/tihmstar/libpartialzip
+cd ./libpartialzip && bash autogen.sh && make install
+
+git clone git@github.com:libimobiledevice/libplist.git 
+cd ./libplist && bash autogen.sh && make install
+
+git clone https://github.com/tihmstar/tsschecker
+cd ./tsschecker && bash autogen.sh && make install
+```
+Now try running the tsschecker command in terminal.
+If you receive an error stating that any shared object file/library can not be found be sure to include it in your ld.so conf.
+
+You can do that by :
+`echo $'\ninclude /usr/local/lib' | sudo tee -a /etc/ld.so.conf`
+
+Then refresh shared library cache:
+`sudo ldconfig`
+
