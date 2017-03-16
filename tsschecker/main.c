@@ -48,6 +48,7 @@ static struct option longopts[] = {
     { "boardconfig",        required_argument, NULL, 'B' },
     { "buildid",            required_argument, NULL, 'Z' },
     { "debug",              no_argument,       NULL, '0' },
+    { "upgrade",            no_argument,       NULL, '^' },
     { NULL, 0, NULL, 0 }
 };
 
@@ -74,6 +75,7 @@ void cmd_help(){
     printf("      --save-path PATH\t\tspecify path for saving blobs\n");
     printf("  -h, --help\t\t\tprints usage information\n");
     printf("      --beta\t\t\trequest ticket for beta instead of normal relase (use with -o)\n");
+    printf("      --upgrade\t\t\tuse upgrade BuildIdentity, instead of erase\n");
     printf("      --list-devices\t\tlist all known devices\n");
     printf("      --list-ios\t\tlist all known ios versions\n");
     printf("      --nocache \t\tignore caches and redownload required files\n");
@@ -235,7 +237,10 @@ int main(int argc, const char * argv[]) {
             case '9': // only long option: "sepnonce"
                 sepnonce = optarg;
                 break;
-                
+            case '^': // only long option: "upgrade"
+                devVals.isUpgradeInstall = 1;
+                break;
+
             default:
                 cmd_help();
                 return -1;
