@@ -136,6 +136,7 @@ static struct bbdevice bbdevices[] = {
     {"iPad2,1", 0},
     {"iPad2,2", 257},
     {"iPad2,4", 0},
+    {"iPad2,5", 0},
     {"iPad3,1", 0},
     {"iPad3,2", 4},
     {"iPad3,3", 4},
@@ -963,7 +964,7 @@ int isManifestSignedForDevice(const char *buildManifestPath, t_devicevals *devVa
     info("[TSSC] opening %s\n",buildManifestPath);
     //filehandling
     FILE *fmanifest = fopen(buildManifestPath, "r");
-    if (!fmanifest) reterror("[TSSC] ERROR: file %s nof found!\n",buildManifestPath);
+    if (!fmanifest) reterror("[TSSC] ERROR: file %s not found!\n",buildManifestPath);
     fseek(fmanifest, 0, SEEK_END);
     long fsize = ftell(fmanifest);
     fseek(fmanifest, 0, SEEK_SET);
