@@ -964,7 +964,7 @@ int isManifestSignedForDevice(const char *buildManifestPath, t_devicevals *devVa
     info("[TSSC] opening %s\n",buildManifestPath);
     //filehandling
     FILE *fmanifest = fopen(buildManifestPath, "r");
-    if (!fmanifest) reterror("[TSSC] ERROR: file %s nof found!\n",buildManifestPath);
+    if (!fmanifest) reterror("[TSSC] ERROR: file %s not found!\n",buildManifestPath);
     fseek(fmanifest, 0, SEEK_END);
     long fsize = ftell(fmanifest);
     fseek(fmanifest, 0, SEEK_SET);
