@@ -816,17 +816,13 @@ plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 	char* request = NULL;
 	int status_code = -1;
 	int retry = 0;
-	int max_retries = 15;
+	int max_retries = 3;
 	unsigned int size = 0;
 	char curl_error_message[CURL_ERROR_SIZE];
 
-	const char* urls[6] = {
+	const char* urls[1] = {
 		"https://gs.apple.com/TSS/controller?action=2",
-		"https://17.171.36.30/TSS/controller?action=2",
-		"https://17.151.36.30/TSS/controller?action=2",
-		"http://gs.apple.com/TSS/controller?action=2",
-		"http://17.171.36.30/TSS/controller?action=2",
-		"http://17.151.36.30/TSS/controller?action=2"
+		"http://gs.apple.com/TSS/controller?action=2"
 	};
     
 	plist_to_xml(tss_request, &request, &size);
@@ -868,7 +864,7 @@ plist_t tss_request_send(plist_t tss_request, const char* server_url_string) {
 		if (server_url_string) {
 			curl_easy_setopt(handle, CURLOPT_URL, server_url_string);
 		} else {
-			int url_index = (retry - 1) % 6;
+			int url_index = (retry - 1) % 2;
 			curl_easy_setopt(handle, CURLOPT_URL, urls[url_index]);
 			info("[TSSR] Request URL set to %s\n", urls[url_index]);
 		}
