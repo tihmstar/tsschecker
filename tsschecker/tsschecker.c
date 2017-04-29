@@ -853,6 +853,7 @@ int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVal
                 warning("[TSSR] faild to build tssrequest for alternative installType\n");
             }else{
                 apticket2 = tss_request_send(tssreq2, NULL);
+                if (print_tss_response) debug_plist(apticket2);
             }
             if (tssreq2) plist_free(tssreq2);
             devVals->installType = kInstallTypeDefault;
@@ -867,6 +868,7 @@ int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVal
             devVals->installType = kInstallTypeErase;
             if (!tssrequest(&tssreq2, buildManifestBuffer, devVals, basebandMode)){
                 apticket3 = tss_request_send(tssreq2, NULL);
+                if (print_tss_response) debug_plist(apticket3);
             }
             devVals->parsedApnonceLen = apnonceLen;
             devVals->apnonce = apnonce;
