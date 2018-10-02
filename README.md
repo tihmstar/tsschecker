@@ -8,6 +8,8 @@ http://api.tihmstar.net/builds/tsschecker/tsschecker-latest.zip
 
 Windows support has stopped. 
 
+Follow [this guide](https://dev.to/jake/using-libcurl3-and-libcurl4-on-ubuntu-1804-bionic-184g) to use tsschecker on Ubuntu 18.04 (Bionic) as it requires libcurl3 which cannot coexist with libcurl4 on this OS.
+
 ## Features  
 * Allows you to get lists of all devices and all iOS/OTA versions for a specific device.
 * Can check signing status for default iOS versions and beta ipsws (by specifying a `BuildManifest.plist`)
