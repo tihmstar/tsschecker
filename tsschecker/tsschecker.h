@@ -28,6 +28,7 @@ extern const char *shshSavePath;
 struct bbdevice{
     const char *deviceModel;
     uint64_t bbgcid;
+    size_t bbsnumSize;
 };
 
 typedef struct bbdevice* t_bbdevice;
@@ -47,6 +48,8 @@ typedef struct{
     uint64_t bbgcid;
     size_t parsedApnonceLen;
     size_t parsedSepnonceLen;
+    uint8_t *bbsnum;
+    size_t bbsnumSize;
     char generator[19];
     union{
         t_installType installType : 2;
