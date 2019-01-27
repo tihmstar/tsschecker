@@ -815,6 +815,15 @@ int tss_request_add_se_tags(plist_t request, plist_t parameters, plist_t overrid
 	}
 	plist_dict_set_item(request, "SE,Nonce", plist_copy(node));
 	node = NULL;
+	
+	/* add SE,OSUPubKeyID */
+	node = plist_dict_get_item(parameters, "SE,OSUPubKeyID");
+	if (!node) {
+		tsserror("ERROR: %s: Unable to find required SE,OSUPubKeyID in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "SE,OSUPubKeyID", plist_copy(node));
+	node = NULL;
 
 	/* add SE,RootKeyIdentifier */
 	node = plist_dict_get_item(parameters, "SE,RootKeyIdentifier");
