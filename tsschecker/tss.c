@@ -253,6 +253,96 @@ int tss_parameters_add_from_manifest(plist_t parameters, plist_t build_identity)
 	}
 	node = NULL;
 
+	/* SE,ChipID - Used for SE firmware request */
+	node = plist_dict_get_item(build_identity, "SE,ChipID");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "SE,ChipID", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "SE,ChipID", plist_copy(node));
+		}
+	}
+	node = NULL;
+
+	/* Savage,ChipID - Used for Savage firmware request */
+	node = plist_dict_get_item(build_identity, "Savage,ChipID");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "Savage,ChipID", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "Savage,ChipID", plist_copy(node));
+		}
+	}
+	node = NULL;
+
+	/* add Savage,PatchEpoch - Used for Savage firmware request */
+	node = plist_dict_get_item(build_identity, "Savage,PatchEpoch");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "Savage,PatchEpoch", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "Savage,PatchEpoch", plist_copy(node));
+		}
+	}
+	node = NULL;
+
+	/* Yonkers,BoardID - Used for Yonkers firmware request */
+	node = plist_dict_get_item(build_identity, "Yonkers,BoardID");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "Yonkers,BoardID", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "Yonkers,BoardID", plist_copy(node));
+		}
+	}
+	node = NULL;
+
+	/* Yonkers,ChipID - Used for Yonkers firmware request */
+	node = plist_dict_get_item(build_identity, "Yonkers,ChipID");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "Yonkers,ChipID", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "Yonkers,ChipID", plist_copy(node));
+		}
+	}
+	node = NULL;
+
+	/* add Yonkers,PatchEpoch - Used for Yonkers firmware request */
+	node = plist_dict_get_item(build_identity, "Yonkers,PatchEpoch");
+	if (node) {
+		if (plist_get_node_type(node) == PLIST_STRING) {
+			char *strval = NULL;
+			int intval = 0;
+			plist_get_string_val(node, &strval);
+			sscanf(strval, "%x", &intval);
+			plist_dict_set_item(parameters, "Yonkers,PatchEpoch", plist_new_uint(intval));
+		} else {
+			plist_dict_set_item(parameters, "Yonkers,PatchEpoch", plist_copy(node));
+		}
+	}
+	node = NULL;
+	
 	/* add build identity manifest dictionary */
 	node = plist_dict_get_item(build_identity, "Manifest");
 	if (!node || plist_get_node_type(node) != PLIST_DICT) {
@@ -790,6 +880,255 @@ int tss_request_add_se_tags(plist_t request, plist_t parameters, plist_t overrid
 
 	return 0;
 }
+
+int tss_request_add_savage_tags(plist_t request, plist_t parameters, plist_t overrides, char **component_name)
+{
+	plist_t node = NULL;
+
+	plist_t manifest_node = plist_dict_get_item(parameters, "Manifest");
+	if (!manifest_node || plist_get_node_type(manifest_node) != PLIST_DICT) {
+		error("ERROR: %s: Unable to get restore manifest from parameters\n", __func__);
+		return -1;
+	}
+
+	/* add tags indicating we want to get the Savage,Ticket */
+	plist_dict_set_item(request, "@BBTicket", plist_new_bool(1));
+	plist_dict_set_item(request, "@Savage,Ticket", plist_new_bool(1));
+
+	/* add Savage,UID */
+	node = plist_dict_get_item(parameters, "Savage,UID");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,UID in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,UID", plist_copy(node));
+	node = NULL;
+
+	/* add SEP */
+	node = plist_access_path(manifest_node, 2, "SEP", "Digest");
+	if (!node) {
+		error("ERROR: Unable to get SEP digest from manifest\n");
+		return -1;
+	}
+	plist_t dict = plist_new_dict();
+	plist_dict_set_item(dict, "Digest", plist_copy(node));
+	plist_dict_set_item(request, "SEP", dict);
+
+	/* add Savage,PatchEpoch */
+	node = plist_dict_get_item(parameters, "Savage,PatchEpoch");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,PatchEpoch in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,PatchEpoch", plist_copy(node));
+	node = NULL;
+
+	/* add Savage,ChipID */
+	node = plist_dict_get_item(parameters, "Savage,ChipID");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,ChipID in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,ChipID", plist_copy(node));
+	node = NULL;
+
+	/* add Savage,AllowOfflineBoot */
+	node = plist_dict_get_item(parameters, "Savage,AllowOfflineBoot");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,AllowOfflineBoot in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,AllowOfflineBoot", plist_copy(node));
+	node = NULL;
+
+	/* add Savage,ReadFWKey */
+	node = plist_dict_get_item(parameters, "Savage,ReadFWKey");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,ReadFWKey in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,ReadFWKey", plist_copy(node));
+	node = NULL;
+
+	/* add Savage,ProductionMode */
+	node = plist_dict_get_item(parameters, "Savage,ProductionMode");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,ProductionMode in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,ProductionMode", plist_copy(node));
+	const char *comp_name = NULL;
+	uint8_t isprod = 0;
+	plist_get_bool_val(node, &isprod);
+	node = NULL;
+
+	/* get the right component name */
+	comp_name = (isprod) ?  "Savage,B0-Prod-Patch" : "Savage,B0-Dev-Patch";
+	node = plist_dict_get_item(parameters, "Savage,Revision");
+	if (node && (plist_get_node_type(node) == PLIST_DATA)) {
+		unsigned char *savage_rev = NULL;
+		uint64_t savage_rev_len = 0;
+		plist_get_data_val(node, (char**)&savage_rev, &savage_rev_len);
+		if (savage_rev_len > 0) {
+			if (((savage_rev[0] | 0x10) & 0xF0) == 0x30) {
+				comp_name = (isprod) ? "Savage,B2-Prod-Patch" : "Savage,B2-Dev-Patch";
+			} else if ((savage_rev[0] & 0xF0) == 0xA0) {
+				comp_name = (isprod) ? "Savage,BA-Prod-Patch" : "Savage,BA-Dev-Patch";
+			}
+		}
+		free(savage_rev);
+	}
+
+	/* add Savage,B?-*-Patch */
+	node = plist_dict_get_item(manifest_node, comp_name);
+	if (!node) {
+		error("ERROR: Unable to get %s entry from manifest\n", comp_name);
+		return -1;
+	}
+	dict = plist_copy(node);
+	plist_dict_remove_item(dict, "Info");
+	plist_dict_set_item(request, comp_name, dict);
+
+	if (component_name) {
+		*component_name = strdup(comp_name);
+	}
+
+	/* add Savage,Nonce */
+	node = plist_dict_get_item(parameters, "Savage,Nonce");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,Nonce in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,Nonce", plist_copy(node));
+	node = NULL;
+
+	/* add Savage,ReadECKey */
+	node = plist_dict_get_item(parameters, "Savage,ReadECKey");
+	if (!node) {
+		error("ERROR: %s: Unable to find required Savage,ReadECKey in parameters\n", __func__);
+		return -1;
+	}
+	plist_dict_set_item(request, "Savage,ReadECKey", plist_copy(node));
+	node = NULL;
+
+	/* apply overrides */
+	if (overrides) {
+		plist_dict_merge(&request, overrides);
+	}
+
+	return 0;
+}
+
+int tss_request_add_yonkers_tags(plist_t request, plist_t parameters, plist_t overrides, char **component_name)
+{
+	plist_t node = NULL;
+
+	plist_t manifest_node = plist_dict_get_item(parameters, "Manifest");
+	if (!manifest_node || plist_get_node_type(manifest_node) != PLIST_DICT) {
+		error("ERROR: %s: Unable to get restore manifest from parameters\n", __func__);
+		return -1;
+	}
+
+	/* add tags indicating we want to get the Savage,Ticket */
+	plist_dict_set_item(request, "@BBTicket", plist_new_bool(1));
+	plist_dict_set_item(request, "@Yonkers,Ticket", plist_new_bool(1));
+
+	/* add SEP */
+	node = plist_access_path(manifest_node, 2, "SEP", "Digest");
+	if (!node) {
+		error("ERROR: Unable to get SEP digest from manifest\n");
+		return -1;
+	}
+	plist_t dict = plist_new_dict();
+	plist_dict_set_item(dict, "Digest", plist_copy(node));
+	plist_dict_set_item(request, "SEP", dict);
+
+	{
+		static const char *keys[] = {"Yonkers,AllowOfflineBoot", "Yonkers,BoardID", "Yonkers,ChipID", "Yonkers,ECID", "Yonkers,Nonce", "Yonkers,PatchEpoch", "Yonkers,ProductionMode", "Yonkers,ReadECKey", "Yonkers,ReadFWKey", };
+		int i;
+		for (i = 0; i < (int)(sizeof(keys) / sizeof(keys[0])); ++i) {
+			node = plist_dict_get_item(parameters, keys[i]);
+			if (!node) {
+				error("ERROR: %s: Unable to find required %s in parameters\n", __func__, keys[i]);
+			}
+			plist_dict_set_item(request, keys[i], plist_copy(node));
+			node = NULL;
+		}
+	}
+
+	char *comp_name = NULL;
+	plist_t comp_node = NULL;
+	uint8_t isprod = 1;
+	uint64_t fabrevision = (uint64_t)-1;
+
+	node = plist_dict_get_item(parameters, "Yonkers,ProductionMode");
+	if (node && (plist_get_node_type(node) == PLIST_BOOLEAN)) {
+		plist_get_bool_val(node, &isprod);
+	}
+
+	node = plist_dict_get_item(parameters, "Yonkers,FabRevision");
+	if (node && (plist_get_node_type(node) == PLIST_UINT)) {
+		plist_get_uint_val(node, &fabrevision);
+	}
+
+	plist_dict_iter iter = NULL;
+	plist_dict_new_iter(manifest_node, &iter);
+	while (iter) {
+		node = NULL;
+		comp_name = NULL;
+		plist_dict_next_item(manifest_node, iter, &comp_name, &node);
+		if (comp_name == NULL) {
+			node = NULL;
+			break;
+		}
+		if (strncmp(comp_name, "Yonkers,", 8) == 0) {
+			int target_node = 1;
+			plist_t sub_node;
+			if ((sub_node = plist_dict_get_item(node, "EPRO")) != NULL && plist_get_node_type(sub_node) == PLIST_BOOLEAN) {
+				uint8_t b = 0;
+				plist_get_bool_val(sub_node, &b);
+				target_node &= ((isprod) ? b : !b);
+			}
+			if ((sub_node = plist_dict_get_item(node, "FabRevision")) != NULL && plist_get_node_type(sub_node) == PLIST_UINT) {
+				uint64_t v = 0;
+				plist_get_uint_val(sub_node, &v);
+				target_node &= (v == fabrevision);
+			}
+			if (target_node) {
+				comp_node = node;
+				break;
+			}
+		}
+		free(comp_name);
+	}
+	free(iter);
+
+	if (comp_name == NULL) {
+		error("ERROR: No Yonkers node for %s/%lu\n", (isprod) ? "Production" : "Development", (unsigned long)fabrevision);
+		return -1;
+	}
+
+	/* add Yonkers,SysTopPatch* */
+	if (comp_node != NULL) {
+		plist_t comp_dict = plist_copy(comp_node);
+		plist_dict_remove_item(comp_dict, "Info");
+		plist_dict_set_item(request, comp_name, comp_dict);
+	}
+
+	if (component_name) {
+		*component_name = comp_name;
+	} else {
+		free(comp_name);
+	}
+
+	/* apply overrides */
+	if (overrides) {
+		plist_dict_merge(&request, overrides);
+	}
+
+	return 0;
+}
+
 
 static size_t tss_write_callback(char* data, size_t size, size_t nmemb, tss_response* response) {
 	size_t total = size * nmemb;
