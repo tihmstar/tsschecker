@@ -166,6 +166,7 @@ static struct bbdevice bbdevices[] = {
     {"AppleTV3,1", 0},
     {"AppleTV3,2", 0},
     {"AppleTV5,3", 0},
+    {"AppleTV6,2", 0},
     {NULL,0}
 };
 
