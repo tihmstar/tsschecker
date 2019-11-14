@@ -105,7 +105,7 @@ int nocache = 0;
 int save_shshblobs = 0;
 const char *shshSavePath = "."DIRECTORY_DELIMITER_STR;
 
-// iPhone & iPod touch (1st generations) doesn't have signing technology.
+// iPhone 2G and iPod touch (1st gen) do not require SHSH or APTicket.
 static struct bbdevice bbdevices[] = {
     // iPod touches
     {"iPod2,1", 0, 0}, // 2nd gen
@@ -830,7 +830,7 @@ getID0:
             log("[TSSR] LOG: device %s doesn't need a Baseband ticket, continuing without requesting a Baseband ticket\n",devVals->deviceModel);
         }
     }else{
-        info("[TSSR] User specified doesn't to request a Baseband ticket.\n");
+        info("[TSSR] User specified not to request a Baseband ticket.\n");
     }
     
     *tssreqret = tssreq;
