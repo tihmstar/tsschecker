@@ -1,11 +1,11 @@
 # tsschecker  
-_tsschecker is a powerful tool to check TSS signing status of various devices and iOS versions._
+_tsschecker is a powerful tool to check TSS signing status of various iOS/iPadOS/tvOS/watchOS devices and versions._
 
-Latest compiled version can be found here:  
-(MacOS + Linux + ~~Windows~~)  
-http://api.tihmstar.net/builds/tsschecker/tsschecker-latest.zip
+the Latest compiled version can be found here: https://github.com/tihmstar/tsschecker/releases
 
-Windows support has stopped. 
+Tihmstar's latest build can be found here:    
+(MacOS and Linux)    
+https://api.tihmstar.net/builds/tsschecker/tsschecker-latest.zip
 
 Follow [this guide](https://dev.to/jake/using-libcurl3-and-libcurl4-on-ubuntu-1804-bionic-184g) to use tsschecker on Ubuntu 18.04 (Bionic) as it requires libcurl3 which cannot coexist with libcurl4 on this OS.
 
@@ -14,15 +14,22 @@ Follow [this guide](https://dev.to/jake/using-libcurl3-and-libcurl4-on-ubuntu-18
 * Can check signing status for default iOS versions and beta ipsws (by specifying a `BuildManifest.plist`)
 * Works without specifying any device relevant values to check signing status, but can be used to save blobs when given an ECID and the option `--print-tss-response` (although there are better tools to do this).
 
-tsschecker is not only meant to be used to check signing status, but also to explore Apple's TSS servers.
+tsschecker not only can be used to check firmware signing status or save APTickets, but can also explore Apple's TSS servers.
 By using all of its customization possibilities, you might discover a combination of devices and iOS versions that is now getting signed but wasn't getting signed before. 
 
-### About nonces:
-_default generators for saving tickets:_
-* `0xbd34a880be0b53f3` // used on Electra / Chimera jailbreaks
-* `0x1111111111111111` // used on unc0ver jailbreak
+### About APNonces:
+_default generators for saving APTickets:_
+* `0xbd34a880be0b53f3` - used on the Electra and Chimera jailbreak programs.
+* `0x1111111111111111` - used on the unc0ver jailbreak program.
 
-Nonce collision method isn't actual now, because we've [checkm8](https://github.com/axi0mx/ipwndfu) low-level exploit.
+_some more generic nonce generators provided by tihmstar:_
+* `0xbd34a880be0b53f3`
+* `0x9d0b5b5ff92fff23`
+* `0x4bb8834ba6444b50`
+* `0x698337f5a79c3292`
+* `0xedeeb72d7575e360`
+
+Note: the Nonce collision method isn't needed anymore, because we now got the [checkm8](https://github.com/axi0mx/ipwndfu) Bootrom exploit.
 
 # Dependencies
 *  ## Bundled libs
