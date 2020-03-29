@@ -14,13 +14,13 @@
 #include <time.h>
 #include <stdio.h>
 
-#include <libfragmentzip/libfragmentzip.h>
-#include <libirecovery.h>
-
 #include "tsschecker.h"
 #include "debug.h"
 #include "download.h"
 #include "tss.h"
+
+#include <libfragmentzip/libfragmentzip.h>
+#include <libirecovery.h>
 
 #ifdef __APPLE__
 #   include <CommonCrypto/CommonDigest.h>
@@ -210,6 +210,10 @@ static struct bbdevice bbdevices[] = {
     {"iPad8,6", 0, 0}, // iPad Pro (12,9", 3rd gen, 1 TB model, Wi-Fi)
     {"iPad8,7", 165673526, 12}, // iPad Pro 12,9", 3rd gen, Cellular)
     {"iPad8,8", 165673526, 12}, // iPad Pro 12,9", 3rd gen, 1 TB model, Cellular)
+    {"iPad8,9", 0, 0}, // iPad Pro (11", 2nd gen, Wi-Fi)
+    {"iPad8,10", 524245983, 12}, // iPad Pro 11", 2nd gen, Cellular)
+    {"iPad8,11", 0, 0}, // iPad Pro (12,9", 4th gen, Wi-Fi)
+    {"iPad8,12", 524245983, 12}, // iPad Pro 12,9", 4th gen, Cellular)
     
     // Apple TVs
     {"AppleTV1,1", 0, 0}, // 1st gen
@@ -829,7 +833,7 @@ getID0:
             log("[TSSR] LOG: device %s doesn't need a baseband ticket, continuing without requesting a Baseband ticket\n",devVals->deviceModel);
         }
     }else{
-        info("[TSSR] User specified doesn't to request a baseband ticket.\n");
+        info("[TSSR] User specified to not request a baseband ticket.\n");
     }
     
     *tssreqret = tssreq;
