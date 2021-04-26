@@ -110,6 +110,8 @@ const char *shshSavePath = "."DIRECTORY_DELIMITER_STR;
 static struct bbdevice bbdevices[] = {
     // Apple Silicon Macs
     {"ADP3,2", 0, 0},         // Developer Transition Kit
+    {"iMac21,1", 0, 0},       // iMac (24-inch, M1, 2021)
+    {"iMac21,2", 0, 0},       // iMac (24-inch, M1, 2021)
     {"Macmini9,1", 0, 0},     // Mac Mini (M1, 2020)
     {"MacBookAir10,1", 0, 0}, // MacBook Air (M1, 2020)
     {"MacBookPro17,1", 0, 0}, // MacBook Pro (13-inch, M1, 2020)
@@ -227,26 +229,34 @@ static struct bbdevice bbdevices[] = {
     {"iPad13,2", 524245983, 12}, // iPad Air (4th gen, Cellular)
     
     // iPad Pros
-    {"iPad6,3",  0, 0},          // iPad Pro (9.7-inch, Wi-Fi)
-    {"iPad6,4",  3840149528, 4}, // iPad Pro (9.7-inch, Cellular)
-    {"iPad6,7",  0, 0},          // iPad Pro (12.9-inch, 1st gen, Wi-Fi)
-    {"iPad6,8",  3840149528, 4}, // iPad Pro (12.9-inch, 1st gen, Cellular)
-    {"iPad7,1",  0, 0},          // iPad Pro (12.9-inch, 2nd gen, Wi-Fi)
-    {"iPad7,2",  2315222105, 4}, // iPad Pro (12.9-inch, 2nd gen, Cellular)
-    {"iPad7,3",  0, 0},          // iPad Pro (10.5-inch, Wi-Fi)
-    {"iPad7,4",  2315222105, 4}, // iPad Pro (10.5-inch, Cellular)
-    {"iPad8,1",  0, 0},          // iPad Pro (11-inch, 1st gen, Wi-Fi)
-    {"iPad8,2",  0, 0},          // iPad Pro (11-inch, 1st gen, 1TB, Wi-Fi)
-    {"iPad8,3",  165673526, 12}, // iPad Pro (11-inch, 1st gen, Cellular)
-    {"iPad8,4",  165673526, 12}, // iPad Pro (11-inch, 1st gen, 1TB, Cellular)
-    {"iPad8,5",  0, 0},          // iPad Pro (12.9-inch, 3rd gen, Wi-Fi)
-    {"iPad8,6",  0, 0},          // iPad Pro (12.9-inch, 3rd gen, 1TB, Wi-Fi)
-    {"iPad8,7",  165673526, 12}, // iPad Pro (12.9-inch, 3rd gen, Cellular)
-    {"iPad8,8",  165673526, 12}, // iPad Pro (12.9-inch, 3rd gen, 1TB, Cellular)
-    {"iPad8,9",  0, 0},          // iPad Pro (11-inch, 2nd gen, Wi-Fi)
-    {"iPad8,10", 524245983, 12}, // iPad Pro (11-inch, 2nd gen, Cellular)
-    {"iPad8,11", 0, 0},          // iPad Pro (12.9-inch, 4th gen, Wi-Fi)
-    {"iPad8,12", 524245983, 12}, // iPad Pro (12.9-inch, 4th gen, Cellular)
+    {"iPad6,3",    0, 0},            // iPad Pro (9.7-inch, Wi-Fi)
+    {"iPad6,4",    3840149528, 4},   // iPad Pro (9.7-inch, Cellular)
+    {"iPad6,7",    0, 0},            // iPad Pro (12.9-inch, 1st gen, Wi-Fi)
+    {"iPad6,8",    3840149528, 4},   // iPad Pro (12.9-inch, 1st gen, Cellular)
+    {"iPad7,1",    0, 0},            // iPad Pro (12.9-inch, 2nd gen, Wi-Fi)
+    {"iPad7,2",    2315222105, 4},   // iPad Pro (12.9-inch, 2nd gen, Cellular)
+    {"iPad7,3",    0, 0},            // iPad Pro (10.5-inch, Wi-Fi)
+    {"iPad7,4",    2315222105, 4},   // iPad Pro (10.5-inch, Cellular)
+    {"iPad8,1",    0, 0},            // iPad Pro (11-inch, 1st gen, Wi-Fi)
+    {"iPad8,2",    0, 0},            // iPad Pro (11-inch, 1st gen, 1TB, Wi-Fi)
+    {"iPad8,3",    165673526, 12},   // iPad Pro (11-inch, 1st gen, Cellular)
+    {"iPad8,4",    165673526, 12},   // iPad Pro (11-inch, 1st gen, 1TB, Cellular)
+    {"iPad8,5",    0, 0},            // iPad Pro (12.9-inch, 3rd gen, Wi-Fi)
+    {"iPad8,6",    0, 0},            // iPad Pro (12.9-inch, 3rd gen, 1TB, Wi-Fi)
+    {"iPad8,7",    165673526, 12},   // iPad Pro (12.9-inch, 3rd gen, Cellular)
+    {"iPad8,8",    165673526, 12},   // iPad Pro (12.9-inch, 3rd gen, 1TB, Cellular)
+    {"iPad8,9",    0, 0},            // iPad Pro (11-inch, 2nd gen, Wi-Fi)
+    {"iPad8,10",   524245983, 12},   // iPad Pro (11-inch, 2nd gen, Cellular)
+    {"iPad8,11",   0, 0},            // iPad Pro (12.9-inch, 4th gen, Wi-Fi)
+    {"iPad8,12",   524245983, 12},   // iPad Pro (12.9-inch, 4th gen, Cellular)
+    {"iPad13,4",   0, 0},            // iPad Pro (11-inch, 3rd gen, Wi-Fi)
+    {"iPad13,5",   0, 0},            // iPad Pro (11-inch, 3rd gen, 2TB, Wi-Fi)
+    {"iPad13,6",   3095201109, 4},   // iPad Pro (11-inch, 3rd gen, Cellular)
+    {"iPad13,7",   3095201109, 4},   // iPad Pro (11-inch, 3rd gen, 2TB, Cellular)
+    {"iPad13,8",   0, 0},            // iPad Pro (12.9-inch, 5th gen, Wi-Fi)
+    {"iPad13,9",   0, 0},            // iPad Pro (12.9-inch, 5th gen, 2TB, Wi-Fi)
+    {"iPad13,10",  3095201109, 4},   // iPad Pro (12.9-inch, 5th gen, Cellular)
+    {"iPad13,11",  3095201109, 4},   // iPad Pro (12.9-inch, 5th gen, 2TB, Cellular)
     
     // Apple Watches
     {"Watch1,1",  0, 0},          // Apple Watch 1st gen (38mm)
@@ -282,12 +292,13 @@ static struct bbdevice bbdevices[] = {
     {"AudioAccessory5,1", 0, 0}, // HomePod mini
     
     // Apple TVs
-    {"AppleTV1,1", 0, 0}, // 1st gen
-    {"AppleTV2,1", 0, 0}, // 2nd gen
-    {"AppleTV3,1", 0, 0}, // 3rd gen
-    {"AppleTV3,2", 0, 0}, // 3rd gen (2013)
-    {"AppleTV5,3", 0, 0}, // 4th gen
-    {"AppleTV6,2", 0, 0}, // 4K
+    {"AppleTV1,1",  0, 0}, // 1st gen
+    {"AppleTV2,1",  0, 0}, // 2nd gen
+    {"AppleTV3,1",  0, 0}, // 3rd gen
+    {"AppleTV3,2",  0, 0}, // 3rd gen (2013)
+    {"AppleTV5,3",  0, 0}, // 4th gen
+    {"AppleTV6,2",  0, 0}, // 4K
+    {"AppleTV11,1", 0, 0}, // 4K 2nd gen
     {NULL, 0, 0}
 };
 

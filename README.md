@@ -2,7 +2,7 @@
 tsschecker is a powerful tool to check TSS signing status on combinations of various apple devices and firmware versions.
 
 ## Features  
-* Supports Apple TV, Apple Watch, HomePod, iBridge, iPadOS, iOS and MacOS (Apple Silicon)
+* Supports: Apple TV, Apple Watch, HomePod, iPad, iPhone, iPod touch, M1 Macs and the T2 Coprocessor.
 * Allows you to get lists of supported apple devices as well as Firmwares and OTA versions for any specified apple device.
 * Can check signing status for any firmware version by specifying either a firmware version or a BuildManifest.
 * Works without specifying any device relevant values to check signing status, but can be used to save blobs when given an ECID and the option --print-tss-response (although there are better tools to do this).
@@ -28,7 +28,7 @@ the Nonce Collision method only works on a few firmwares and devices, and is not
 
 Recovery Nonce Collisions only occur on a few iOS versions, like iOS 9.3.3 and iOS 10.1-10.2 on the iPhone 5s<br/>and is not reliable as once you update, your device will almost-certainly not collide nonces anymore.
 
-DFU Nonce Collisions on the other hand, very commonly occur on any device using A7 and A8 chipsets, regardless of iOS version<br/>and is MUCH more reliable than using recovery collisions.
+DFU Nonce Collisions on the other hand, very commonly occur on any device using A7 and A8 chipsets regardless of iOS version and is MUCH more reliable than using recovery collisions.
 
 # Build
 Install or Compile dependencies
