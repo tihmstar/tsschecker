@@ -24,6 +24,7 @@ int downloadFile(const char *url, const char *dstPath){
     curl_easy_setopt(mcurl, CURLOPT_TIMEOUT, 20L); //20 sec
     curl_easy_setopt(mcurl, CURLOPT_WRITEFUNCTION, my_fwrite);
     curl_easy_setopt(mcurl, CURLOPT_WRITEDATA, dfile);
+    curl_easy_setopt(mcurl, CURLOPT_FAILONERROR, 1);
     
     CURLcode res = curl_easy_perform(mcurl);
     curl_easy_cleanup(mcurl);

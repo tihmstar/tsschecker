@@ -586,11 +586,34 @@ char *getBuildManifest(char *url, const char *device, const char *version, const
     
     if (!f || nocache){
         //download if it isn't there
-        if (downloadPartialzip(url, (isOta) ? "AssetData/boot/BuildManifest.plist" : "BuildManifest.plist", fileDir)){
-            free(fileDir);
-            return NULL;
+        int got_buildmanifest = 0;
+
+        if (!isOta) {
+            int index = 0;
+            for (int i = 0; i < strlen(url); i++) {
+                if (url[i] == '/') {
+                    index = i;
+                }
+            }
+
+            char *buildmanifest_url = malloc(strlen(url));
+            buildmanifest_url = strncpy(buildmanifest_url, url, index);
+            buildmanifest_url[index] = '\0';
+            buildmanifest_url = strcat(buildmanifest_url, "/BuildManifest.plist");
+
+            if (downloadFile(buildmanifest_url, fileDir) == 0) {
+                free(buildmanifest_url);
+                got_buildmanifest = 1;
+            }
         }
-        
+
+        if (!got_buildmanifest) {
+            if (downloadPartialzip(url, (isOta) ? "AssetData/boot/BuildManifest.plist" : "BuildManifest.plist", fileDir)){
+                free(fileDir);
+                return NULL;
+            }
+        }
+
         f = fopen(fileDir, "rb");
     }
     fseek(f, 0, SEEK_END);
