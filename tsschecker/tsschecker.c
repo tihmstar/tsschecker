@@ -590,6 +590,7 @@ char *getBuildManifest(char *url, const char *device, const char *version, const
             free(fileDir);
             return NULL;
         }
+        
         f = fopen(fileDir, "rb");
     }
     fseek(f, 0, SEEK_END);
