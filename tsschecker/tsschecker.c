@@ -943,7 +943,7 @@ error:
 #undef reterror
 }
 
-int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVals, t_basebandMode basebandMode){
+int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVals, t_basebandMode basebandMode, const char* server_url_string){
 #define reterror(a ...) {error(a); isSigned = -1; goto error;}
     int isSigned = 0;
     plist_t tssreq = NULL;
@@ -954,7 +954,7 @@ int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVal
     if (tssrequest(&tssreq, buildManifestBuffer, devVals, basebandMode))
         reterror("[TSSR] failed to build tss request\n");
 
-    isSigned = ((apticket = tss_request_send(tssreq, NULL)) > 0);
+    isSigned = ((apticket = tss_request_send(tssreq, server_url_string)) > 0);
     
     if (print_tss_response) debug_plist(apticket);
     if (isSigned && save_shshblobs){
@@ -965,7 +965,7 @@ int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVal
             if (tssrequest(&tssreq2, buildManifestBuffer, devVals, basebandMode)){
                 warning("[TSSR] failed to build tssrequest for alternative installType\n");
             }else{
-                apticket2 = tss_request_send(tssreq2, NULL);
+                apticket2 = tss_request_send(tssreq2, server_url_string);
                 if (print_tss_response) debug_plist(apticket2);
             }
             if (tssreq2) plist_free(tssreq2);
@@ -980,7 +980,7 @@ int isManifestBufSignedForDevice(char *buildManifestBuffer, t_devicevals *devVal
             devVals->apnonce = (char *)0x1337;
             devVals->installType = kInstallTypeErase;
             if (!tssrequest(&tssreq2, buildManifestBuffer, devVals, kBasebandModeWithoutBaseband)){
-                apticket3 = tss_request_send(tssreq2, NULL);
+                apticket3 = tss_request_send(tssreq2, server_url_string);
                 if (print_tss_response) debug_plist(apticket3);
             }
             devVals->parsedApnonceLen = apnonceLen;
@@ -1065,7 +1065,7 @@ error:
 #undef reterror
 }
 
-int isManifestSignedForDevice(const char *buildManifestPath, t_devicevals *devVals, t_iosVersion *versVals){
+int isManifestSignedForDevice(const char *buildManifestPath, t_devicevals *devVals, t_iosVersion *versVals, const char* server_url_string){
     int isSigned = 0;
 #define reterror(a ...) {error(a); isSigned = -1; goto error;}
     plist_t manifest = NULL;
@@ -1111,7 +1111,7 @@ int isManifestSignedForDevice(const char *buildManifestPath, t_devicevals *devVa
     reterror("[TSSC] selected device can't be used with that buildmanifest\n");
     
 checkedDeviceModel:
-    isSigned = isManifestBufSignedForDevice(bufManifest, devVals, versVals->basebandMode);
+    isSigned = isManifestBufSignedForDevice(bufManifest, devVals, versVals->basebandMode, server_url_string);
     
 error:
     if (manifest) plist_free(manifest);
@@ -1120,7 +1120,7 @@ error:
 #undef reterror
 }
 
-int isVersionSignedForDevice(jssytok_t *firmwareTokens, t_iosVersion *versVals, t_devicevals *devVals){
+int isVersionSignedForDevice(jssytok_t *firmwareTokens, t_iosVersion *versVals, t_devicevals *devVals, const char* server_url_string){
 #define reterror(a ... ) {error(a); goto error;}
     int nocacheorig = nocache;
     if (versVals->version && atoi(versVals->version) <= 3) {
@@ -1150,7 +1150,7 @@ int isVersionSignedForDevice(jssytok_t *firmwareTokens, t_iosVersion *versVals, 
         if (cursigned) {
             info("[TSSC] skipping duplicated build\n");
             
-        }else if ((isSignedOne = isManifestBufSignedForDevice(buildManifest, devVals, versVals->basebandMode)) >= 0){
+        }else if ((isSignedOne = isManifestBufSignedForDevice(buildManifest, devVals, versVals->basebandMode, server_url_string)) >= 0){
             cursigned |= (isSigned > 0);
             
             isSigned = (isSignedOne > 0 || isSigned > 0);

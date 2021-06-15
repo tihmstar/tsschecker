@@ -58,6 +58,7 @@ static struct option longopts[] = {
     { "sepnonce",           required_argument, NULL,  9  },
     { "raw",                required_argument, NULL, 10  },
     { "bbsnum",             required_argument, NULL, 11  },
+    { "server-url",         required_argument, NULL, 12  },
     { "generator",          required_argument, NULL, 'g' },
     { NULL, 0, NULL, 0 }
 };
@@ -87,6 +88,7 @@ void cmd_help(){
     printf("      --beta\t\t\trequest tickets for a beta instead of normal release (use with -o)\n");
     printf("      --list-devices\t\tlist all known devices\n");
     printf("      --list-ios\t\tlist all known firmware versions\n");
+    printf("      --server-url SERVER-URL\t\tmanually specify tss url\n");
     printf("      --nocache \t\tignore caches and re-download required files\n");
     printf("      --print-tss-request\tprint the TSS request that will be sent to Apple\n");
     printf("      --print-tss-response\tprint the TSS response that comes from Apple\n");
@@ -171,6 +173,7 @@ int main(int argc, const char * argv[]) {
     jssytok_t *firmwareTokens = NULL;
     
     const char *rawFilePath = NULL;
+    const char *serverUrl = NULL;
     
     if (argc == 1){
         cmd_help();
@@ -278,6 +281,9 @@ int main(int argc, const char * argv[]) {
             case 11: // only long option: "bbsnum"
                 bbsnum = optarg;
                 break;
+            case 12: // only long option: "server-url"
+                serverUrl = optarg;
+                break;
             default:
                 cmd_help();
                 return -1;
@@ -298,7 +304,7 @@ int main(int argc, const char * argv[]) {
         fclose(f);
         
         printf("Sending TSS request:\n%s",buf);
-        char *rsp = tss_request_send_raw(buf, NULL, (int*)&bufSize);
+        char *rsp = tss_request_send_raw(buf, serverUrl, (int*)&bufSize);
 
         printf("TSS server returned:\n%s\n",rsp);
         free(rsp);
@@ -425,13 +431,13 @@ int main(int argc, const char * argv[]) {
     }else{
         //request ticket
         if (buildmanifest) {
-            isSigned = isManifestSignedForDevice(buildmanifest, &devVals, &versVals);
+            isSigned = isManifestSignedForDevice(buildmanifest, &devVals, &versVals, serverUrl);
 
         }else{
             if (!devVals.deviceModel) reterror(-3,"[TSSC] please specify a device for this option\n\tuse -h for more help\n");
             if (!versVals.version && !versVals.buildID) reterror(-5,"[TSSC] please specify an firmware version or buildID for this option\n\tuse -h for more help\n");
             
-            isSigned = isVersionSignedForDevice(firmwareTokens, &versVals, &devVals);
+            isSigned = isVersionSignedForDevice(firmwareTokens, &versVals, &devVals, serverUrl);
         }
         
         if (isSigned >=0) printf("\n%s %s for device %s %s being signed!\n",(versVals.buildID) ? "Build" : "iOS" ,(versVals.buildID ? versVals.buildID : versVals.version),devVals.deviceModel, (isSigned) ? "IS" : "IS NOT");
