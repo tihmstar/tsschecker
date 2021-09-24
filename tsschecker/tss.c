@@ -220,6 +220,32 @@ uint8_t _plist_dict_get_bool(plist_t dict, const char *key)
     return bval;
 }
 
+/* create a copy of the manifest but filter out some entries */
+static plist_t manifest_copy(plist_t manifest)
+{
+	uint32_t i = 0;
+	uint32_t manifest_size = 0;
+	plist_dict_iter iter = NULL;
+	plist_t manifest_entry = NULL;
+	char* entry_key = NULL;
+	plist_t copy = plist_new_dict();
+
+	plist_dict_new_iter(manifest, &iter);
+	manifest_size = plist_dict_get_size(manifest);
+	for (i = 0; i < manifest_size; i++) {
+		plist_dict_next_item(manifest, iter, &entry_key, &manifest_entry);
+		if (entry_key == NULL) {
+			break;
+		}
+		// Ignore "SE,UpdatePayload" and keys starting with "Savage,"
+		if (manifest_entry && strcmp(entry_key, "SE,UpdatePayload") && strstr(entry_key, "Savage,") != entry_key) {
+			plist_dict_set_item(copy, entry_key, plist_copy(manifest_entry));
+		}
+		free(entry_key);
+	}
+	free(iter);
+	return copy;
+}
 
 int tss_parameters_add_from_manifest(plist_t parameters, plist_t build_identity)
 {
@@ -475,7 +501,7 @@ int tss_parameters_add_from_manifest(plist_t parameters, plist_t build_identity)
 		tsserror("ERROR: Unable to find Manifest node\n");
 		return -1;
 	}
-	plist_dict_set_item(parameters, "Manifest", plist_copy(node));
+	plist_dict_set_item(parameters, "Manifest", manifest_copy(node));
 
 	return 0;
 }
