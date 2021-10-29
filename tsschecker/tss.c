@@ -788,12 +788,19 @@ int tss_request_add_ap_tags(plist_t request, plist_t parameters, plist_t overrid
 			return -1;
 		}
 
-		/* do not populate BasebandFirmware, only in baseband request */
-		if ((strcmp(key, "BasebandFirmware") == 0)) {
-			free(key);
-			continue;
-		}
+        /* do not populate BasebandFirmware, only in baseband request */
+        if ((strcmp(key, "BasebandFirmware") == 0)) {
+            free(key);
+            continue;
+        }
 
+        /* do not populate Savage, only in Savage request */
+        if ((strncmp(key, "Savage",sizeof("Savage")-1) == 0)) {
+            free(key);
+            continue;
+        }
+
+        
 		/* only used with diagnostics firmware */
 		if ((strcmp(key, "Diags") == 0)) {
 			free(key);
