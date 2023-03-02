@@ -21,8 +21,7 @@ libtool
 ltmain.sh
 m4
 missing
-*/all.h*
-*/tsschecker*
 stamp-h1
+tsschecker/tsschecker
 */xcuserdata/*
 configure~
