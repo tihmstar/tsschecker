@@ -1,19 +1,24 @@
-AM_CFLAGS = $(libplist_CFLAGS) $(libfragmentzip_CFLAGS) $(libcurl_CFLAGS) $(libcrypto_CFLAGS) $(libirecovery_CFLAGS)  -I$(top_srcdir)/external/jssy/jssy/
-AM_LDFLAGS = $(libplist_LIBS) $(libfragmentzip_LIBS) $(libcurl_LIBS) $(libcrypto_LIBS) $(libirecovery_LIBS) -lm
+AM_CFLAGS = -I$(top_srcdir)/include $(GLOBAL_CFLAGS) $(libcurl_CFLAGS) $(libfragmentzip_CFLAGS) \
+							$(libgeneral_CFLAGS) $(libirecovery_CFLAGS) $(libplist_CFLAGS) $(openssl_CFLAGS)
+AM_CXXFLAGS = $(AM_CFLAGS) $(GLOBAL_CXXFLAGS)
+AM_LDFLAGS =	$(libcurl_LIBS) $(libfragmentzip_LIBS) $(libgeneral_LIBS) $(libirecovery_LIBS) \
+							$(libplist_LIBS) $(openssl_LIBS)
 
-lib_LIBRARIES = libjssy.a
-libjssy_a_CFLAGS = $(AM_CFLAGS)
-libjssy_a_SOURCES = $(top_srcdir)/external/jssy/jssy/jssy.c
-
-if NOMAIN
-noinst_LTLIBRARIES = libtsschecker.la
-libtsschecker_la_SOURCES = tsschecker.c tss.c download.c
-libtsschecker_la_CFLAGS = $(AM_CFLAGS)
-libtsschecker_la_LIBADD = $(AM_LDFLAGS) libjssy.a
-else
+lib_LTLIBRARIES = libtsschecker.la
 bin_PROGRAMS = tsschecker
-tsschecker_CFLAGS = $(AM_CFLAGS)
-tsschecker_LDADD = $(AM_LDFLAGS) libjssy.a
 
-tsschecker_SOURCES = tsschecker.c tss.c download.c main.c
-endif
+libtsschecker_la_CFLAGS = $(AM_CFLAGS)
+libtsschecker_la_CXXFLAGS = $(AM_CXXFLAGS)
+libtsschecker_la_LDFLAGS = $(AM_LDFLAGS)
+libtsschecker_la_SOURCES = 	tsschecker.cpp \
+							../external/jssy/jssy/jssy.c \
+							TssRequest.cpp \
+							TSSException.cpp \
+							FirmwareAPI.cpp \
+							FirmwareAPI_IPSWME.cpp
+
+tsschecker_CFLAGS = $(AM_CFLAGS)
+tsschecker_CXXFLAGS = $(AM_CXXFLAGS)
+tsschecker_LDFLAGS = $(AM_LDFLAGS)
+tsschecker_LDADD = libtsschecker.la
+tsschecker_SOURCES = 	main.cpp

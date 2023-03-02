@@ -30,50 +30,13 @@ Recovery Nonce Collisions only occur on a few iOS versions, like iOS 9.3.3 and i
 DFU Nonce Collisions commonly occur on any device using A7 and A8 chipsets, regardless of iOS version.<br>and is much more reliable than using recovery collisions.
 
 # Dependencies
-*  ## Bundled libs
-  Those don't need to be installed manually
-  * [tss](https://github.com/libimobiledevice)
 * ## External libs
   Make sure these are installed
   * [libcurl](https://curl.haxx.se/libcurl/)
-  * [libplist](https://github.com/libimobiledevice/libplist)
   * [libfragmentzip](https://github.com/tihmstar/libfragmentzip)
-  * [openssl](https://github.com/openssl/openssl) or commonCrypto on macOS/OS X;
   * [libirecovery](https://github.com/libimobiledevice/libirecovery);
+  * [libplist](https://github.com/libimobiledevice/libplist)
+  * [openssl](https://github.com/openssl/openssl) or commonCrypto on macOS/OS X;
 * ## Submodules
   Make sure these projects compile on your system
   * [jssy](https://github.com/tihmstar/jssy)
-
-## Help  
-
-
-Usage: `tsschecker [OPTIONS]`
-
-Example: `tsschecker -d iPhone10,1 -B D20AP -e <ecid> -i 13.4.1 --generator 0x1111111111111111 -s`
-
-| option (short) | option (long)             | description                                                                       |
-|----------------|---------------------------|-----------------------------------------------------------------------------------|
-|  `-h`          | `--help`                  | prints usage information                                                          |        
-|  `-d`          | `--device MODEL`          | specify device by its model (eg. `iPhone4,1`)                                     |
-|  `-i`          | `--ios VERSION`           | specify firmware version (eg. `6.1.3`)                                                 |
-|  `-Z`	   | `--buildid BUILD `	| specific buildid instead of firmware version (eg. `13C75`)							               |
-|  `-B` 	   | `--boardconfig BOARD `	   | specific boardconfig instead of device model (eg. `n61ap`)						             |
-|  `-o`          | `--ota`	                 | check OTA signing status, instead of normal restore                               |
-|  `-b`          | `--no-baseband`           | don't check baseband signing status. Request a ticket without baseband            |
-|  `-m`          | `--build-manifest`   | manually specify buildmanifest (can be used with `-d`)                           | 
-|  `-s`          | `--save`		     		       | save fetched shsh blobs (mostly makes sense with -e)                              |
-|  `-u`          | `--update-install         `| request update ticket instead of erase                          |  
-|  `-l`	   | `--latest`  				       | use latest public firmware version instead of manually specifying one<br>especially useful with `-s` and `-e` for saving signing tickets                                                                                              |
-|  `-e`          | `--ecid ECID`	         | manually specify an ECID to be used for fetching blobs, instead of using random ones. <br>ECID must be either DEC or HEX eg. `5482657301265` or `ab46efcbf71`                                                          |
-|  `-g`          | `--generator GEN`        | manually specify generator in format 0x%%16llx                                                                                                        |
-|      			     | `--apnonce NONCE`   		   | manually specify ApNonce instead of using random one (not required for saving signing tickets) |
-|      			     | `--sepnonce NONCE`        | manually specify SepNonce instead of using random one (not required for saving signing tickets) 		                                                                                                                                  |
-|                           | `--bbsnum SNUM`        | manually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)                                                                                                                                   |
-|      			     | `--save-path PATH`        | specify path for saving blobs 		 											 |
-|                |`--beta`	             | request ticket for beta instead of normal release (use with `-o`)                |
-|                |`--list-devices`          | list all known devices                                                            |
-|                |`--list-ios`	             | list all known firmware versions                                                       |
-|                |`--nocache`       	     | ignore caches and re-download required files                                      |
-|                |`--print-tss-request`      | prints TSS request that will be sent to Apple                                      |
-|                |`--print-tss-response`     | prints TSS response that come from Apple                                  |
-|                |`--raw`     | send raw file to Apple's TSS server (useful for debugging)                                 |

@@ -3,26 +3,30 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 47;
+	objectVersion = 56;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		5641335A22DFB62C00D04476 /* cmain.c in Sources */ = {isa = PBXBuildFile; fileRef = 5641335822DFB62C00D04476 /* cmain.c */; };
-		5641335D22DFB63300D04476 /* jssy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5641335C22DFB63300D04476 /* jssy.cpp */; };
-		5641336322DFB66400D04476 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 5641336222DFB66400D04476 /* libcurl.tbd */; };
-		568FB3B12302FADA00791D9E /* libplist.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 568FB3B02302FAD900791D9E /* libplist.a */; };
-		568FB3B32302FAEA00791D9E /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 568FB3B22302FAEA00791D9E /* libcrypto.a */; };
-		568FB3B52302FB0F00791D9E /* libirecovery.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 568FB3B42302FB0F00791D9E /* libirecovery.a */; };
-		568FB3B72302FB1D00791D9E /* libfragmentzip.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 568FB3B62302FB1C00791D9E /* libfragmentzip.a */; };
-		87B93E861EE709A800709583 /* jssy.c in Sources */ = {isa = PBXBuildFile; fileRef = 87B93E841EE709A800709583 /* jssy.c */; };
-		87CEC4C91C576BD9006E75FC /* tss.c in Sources */ = {isa = PBXBuildFile; fileRef = 87CEC4C81C576BD9006E75FC /* tss.c */; };
-		87EB90A31C2940CD002CEE70 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 87EB90A21C2940CD002CEE70 /* main.c */; };
-		87F927AC1C3E44CE00343510 /* tsschecker.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927AA1C3E44CE00343510 /* tsschecker.c */; };
-		87F927AF1C3E455200343510 /* download.c in Sources */ = {isa = PBXBuildFile; fileRef = 87F927AD1C3E455200343510 /* download.c */; };
+		8717FE0129ADEB0E00B77DE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0029ADEB0E00B77DE2 /* main.cpp */; };
+		8717FE0929ADECF200B77DE2 /* tsschecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0729ADECF200B77DE2 /* tsschecker.cpp */; };
+		8717FE0C29ADEF7E00B77DE2 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */; };
+		8717FE0D29ADEF7E00B77DE2 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		8717FE1129ADF43400B77DE2 /* FirmwareAPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */; };
+		8717FE1429ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */; };
+		8753870829B0847900D71685 /* jssy.c in Sources */ = {isa = PBXBuildFile; fileRef = 8753870729B0847900D71685 /* jssy.c */; };
+		87B5C28429AE00F300AD4923 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28329AE00EE00AD4923 /* libcurl.tbd */; };
+		87B5C28D29AE3AE000AD4923 /* libplist-2.0.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */; };
+		87B5C28E29AE3AE000AD4923 /* libplist-2.0.3.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		87B5C29029AE3D6E00AD4923 /* libfragmentzip.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */; };
+		87B5C29129AE3D6E00AD4923 /* libfragmentzip.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		87B5C29429AE3F9600AD4923 /* TssRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87B5C29229AE3F9600AD4923 /* TssRequest.cpp */; };
+		87B5C29829AE421D00AD4923 /* TSSException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87B5C29629AE421D00AD4923 /* TSSException.cpp */; };
+		87E2B1AD29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */; };
+		87E2B1AE29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		87EB909D1C2940CD002CEE70 /* CopyFiles */ = {
+		8717FDFB29ADEB0E00B77DE2 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = /usr/share/man/man1/;
@@ -31,135 +35,130 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
+		8717FE0E29ADEF7E00B77DE2 /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				87B5C29129AE3D6E00AD4923 /* libfragmentzip.0.dylib in Embed Libraries */,
+				8717FE0D29ADEF7E00B77DE2 /* libgeneral.0.dylib in Embed Libraries */,
+				87E2B1AE29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Embed Libraries */,
+				87B5C28E29AE3AE000AD4923 /* libplist-2.0.3.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		5641335522DFB60700D04476 /* debug.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = debug.h; sourceTree = "<group>"; };
-		5641335622DFB61200D04476 /* all.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = all.h; sourceTree = "<group>"; };
-		5641335722DFB62C00D04476 /* helper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = helper.h; path = external/jssy/jssy/helper.h; sourceTree = SOURCE_ROOT; };
-		5641335822DFB62C00D04476 /* cmain.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = cmain.c; path = external/jssy/jssy/cmain.c; sourceTree = SOURCE_ROOT; };
-		5641335C22DFB63300D04476 /* jssy.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = jssy.cpp; path = external/jssy/jssy/jssy.cpp; sourceTree = SOURCE_ROOT; };
-		5641335F22DFB63C00D04476 /* jssy.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = jssy.hpp; path = external/jssy/jssy/jssy.hpp; sourceTree = SOURCE_ROOT; };
-		5641336022DFB63C00D04476 /* ptr_smart.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = ptr_smart.hpp; path = external/jssy/jssy/ptr_smart.hpp; sourceTree = SOURCE_ROOT; };
-		5641336222DFB66400D04476 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
-		568FB3B02302FAD900791D9E /* libplist.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libplist.a; path = ../../../../../usr/local/lib/libplist.a; sourceTree = "<group>"; };
-		568FB3B22302FAEA00791D9E /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = ../../../../../usr/local/lib/libcrypto.a; sourceTree = "<group>"; };
-		568FB3B42302FB0F00791D9E /* libirecovery.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libirecovery.a; path = ../../../../../usr/local/lib/libirecovery.a; sourceTree = "<group>"; };
-		568FB3B62302FB1C00791D9E /* libfragmentzip.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libfragmentzip.a; path = ../../../../../usr/local/lib/libfragmentzip.a; sourceTree = "<group>"; };
-		87B93E841EE709A800709583 /* jssy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jssy.c; path = external/jssy/jssy/jssy.c; sourceTree = SOURCE_ROOT; };
-		87B93E851EE709A800709583 /* jssy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jssy.h; path = external/jssy/jssy/jssy.h; sourceTree = SOURCE_ROOT; };
-		87CEC4C81C576BD9006E75FC /* tss.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tss.c; sourceTree = "<group>"; };
-		87CEC4CA1C576BE0006E75FC /* tss.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tss.h; sourceTree = "<group>"; };
-		87EB909F1C2940CD002CEE70 /* tsschecker */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tsschecker; sourceTree = BUILT_PRODUCTS_DIR; };
-		87EB90A21C2940CD002CEE70 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
-		87F927AA1C3E44CE00343510 /* tsschecker.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = tsschecker.c; sourceTree = "<group>"; };
-		87F927AB1C3E44CE00343510 /* tsschecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = tsschecker.h; sourceTree = "<group>"; };
-		87F927AD1C3E455200343510 /* download.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = download.c; sourceTree = "<group>"; };
-		87F927AE1C3E455200343510 /* download.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = download.h; sourceTree = "<group>"; };
+		8717FDFD29ADEB0E00B77DE2 /* tsschecker */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tsschecker; sourceTree = BUILT_PRODUCTS_DIR; };
+		8717FE0029ADEB0E00B77DE2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		8717FE0729ADECF200B77DE2 /* tsschecker.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tsschecker.cpp; sourceTree = "<group>"; };
+		8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgeneral.0.dylib; path = ../../../../usr/local/lib/libgeneral.0.dylib; sourceTree = "<group>"; };
+		8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI.cpp; sourceTree = "<group>"; };
+		8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI_IPSWME.cpp; sourceTree = "<group>"; };
+		8717FE1529ADF58D00B77DE2 /* tsschecker.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = tsschecker.hpp; path = include/tsschecker/tsschecker.hpp; sourceTree = SOURCE_ROOT; };
+		8717FE1629ADF58D00B77DE2 /* FirmwareAPI.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI.hpp; path = include/tsschecker/FirmwareAPI.hpp; sourceTree = SOURCE_ROOT; };
+		8717FE1729ADF58D00B77DE2 /* FirmwareAPI_IPSWME.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI_IPSWME.hpp; path = include/tsschecker/FirmwareAPI_IPSWME.hpp; sourceTree = SOURCE_ROOT; };
+		8753870629B0847800D71685 /* jssy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jssy.h; path = external/jssy/jssy/jssy.h; sourceTree = SOURCE_ROOT; };
+		8753870729B0847900D71685 /* jssy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jssy.c; path = external/jssy/jssy/jssy.c; sourceTree = SOURCE_ROOT; };
+		87B5C28329AE00EE00AD4923 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
+		87B5C28929AE229800AD4923 /* libirecovery.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libirecovery.2.dylib; path = ../../../../usr/local/lib/libirecovery.2.dylib; sourceTree = "<group>"; };
+		87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libplist-2.0.3.dylib"; path = "../../../../usr/local/lib/libplist-2.0.3.dylib"; sourceTree = "<group>"; };
+		87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libfragmentzip.0.dylib; path = ../../../../usr/local/lib/libfragmentzip.0.dylib; sourceTree = "<group>"; };
+		87B5C29229AE3F9600AD4923 /* TssRequest.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TssRequest.cpp; sourceTree = "<group>"; };
+		87B5C29529AE40DF00AD4923 /* TssRequest.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TssRequest.hpp; path = include/tsschecker/TssRequest.hpp; sourceTree = SOURCE_ROOT; };
+		87B5C29629AE421D00AD4923 /* TSSException.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TSSException.cpp; sourceTree = "<group>"; };
+		87B5C29929AE427B00AD4923 /* TSSException.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TSSException.hpp; path = include/tsschecker/TSSException.hpp; sourceTree = SOURCE_ROOT; };
+		87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libirecovery-1.0.3.dylib"; path = "../../../../usr/local/lib/libirecovery-1.0.3.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		87EB909C1C2940CD002CEE70 /* Frameworks */ = {
+		8717FDFA29ADEB0E00B77DE2 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5641336322DFB66400D04476 /* libcurl.tbd in Frameworks */,
-				568FB3B32302FAEA00791D9E /* libcrypto.a in Frameworks */,
-				568FB3B72302FB1D00791D9E /* libfragmentzip.a in Frameworks */,
-				568FB3B52302FB0F00791D9E /* libirecovery.a in Frameworks */,
-				568FB3B12302FADA00791D9E /* libplist.a in Frameworks */,
+				87B5C28429AE00F300AD4923 /* libcurl.tbd in Frameworks */,
+				87B5C29029AE3D6E00AD4923 /* libfragmentzip.0.dylib in Frameworks */,
+				87E2B1AD29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Frameworks */,
+				8717FE0C29ADEF7E00B77DE2 /* libgeneral.0.dylib in Frameworks */,
+				87B5C28D29AE3AE000AD4923 /* libplist-2.0.3.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		87B93E821EE7098900709583 /* external */ = {
+		8717FDF429ADEB0E00B77DE2 = {
 			isa = PBXGroup;
 			children = (
-				87B93E831EE7099A00709583 /* jssy */,
-			);
-			name = external;
-			sourceTree = "<group>";
-		};
-		87B93E831EE7099A00709583 /* jssy */ = {
-			isa = PBXGroup;
-			children = (
-				5641335F22DFB63C00D04476 /* jssy.hpp */,
-				5641336022DFB63C00D04476 /* ptr_smart.hpp */,
-				5641335822DFB62C00D04476 /* cmain.c */,
-				5641335722DFB62C00D04476 /* helper.h */,
-				87B93E851EE709A800709583 /* jssy.h */,
-				5641335C22DFB63300D04476 /* jssy.cpp */,
-				87B93E841EE709A800709583 /* jssy.c */,
-			);
-			name = jssy;
-			sourceTree = "<group>";
-		};
-		87CD9A3B1E0F35FE00E566B7 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				5641336222DFB66400D04476 /* libcurl.tbd */,
-				568FB3B02302FAD900791D9E /* libplist.a */,
-				568FB3B22302FAEA00791D9E /* libcrypto.a */,
-				568FB3B42302FB0F00791D9E /* libirecovery.a */,
-				568FB3B62302FB1C00791D9E /* libfragmentzip.a */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		87CEC4CB1C576BE8006E75FC /* libs */ = {
-			isa = PBXGroup;
-			children = (
-				87CEC4CA1C576BE0006E75FC /* tss.h */,
-				87CEC4C81C576BD9006E75FC /* tss.c */,
-			);
-			name = libs;
-			sourceTree = "<group>";
-		};
-		87EB90961C2940CD002CEE70 = {
-			isa = PBXGroup;
-			children = (
-				87EB90A11C2940CD002CEE70 /* tsschecker */,
-				87EB90A01C2940CD002CEE70 /* Products */,
-				87CD9A3B1E0F35FE00E566B7 /* Frameworks */,
+				8717FDFF29ADEB0E00B77DE2 /* tsschecker */,
+				8717FDFE29ADEB0E00B77DE2 /* Products */,
+				8717FE0A29ADEF7E00B77DE2 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
-		87EB90A01C2940CD002CEE70 /* Products */ = {
+		8717FDFE29ADEB0E00B77DE2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				87EB909F1C2940CD002CEE70 /* tsschecker */,
+				8717FDFD29ADEB0E00B77DE2 /* tsschecker */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		87EB90A11C2940CD002CEE70 /* tsschecker */ = {
+		8717FDFF29ADEB0E00B77DE2 /* tsschecker */ = {
 			isa = PBXGroup;
 			children = (
-				5641335622DFB61200D04476 /* all.h */,
-				5641335522DFB60700D04476 /* debug.h */,
-				87B93E821EE7098900709583 /* external */,
-				87CEC4CB1C576BE8006E75FC /* libs */,
-				87F927AE1C3E455200343510 /* download.h */,
-				87F927AD1C3E455200343510 /* download.c */,
-				87F927AB1C3E44CE00343510 /* tsschecker.h */,
-				87F927AA1C3E44CE00343510 /* tsschecker.c */,
-				87EB90A21C2940CD002CEE70 /* main.c */,
+				87B5C28529AE03CD00AD4923 /* external */,
+				87B5C29929AE427B00AD4923 /* TSSException.hpp */,
+				87B5C29629AE421D00AD4923 /* TSSException.cpp */,
+				8717FE1629ADF58D00B77DE2 /* FirmwareAPI.hpp */,
+				8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */,
+				8717FE1729ADF58D00B77DE2 /* FirmwareAPI_IPSWME.hpp */,
+				8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */,
+				8717FE1529ADF58D00B77DE2 /* tsschecker.hpp */,
+				8717FE0729ADECF200B77DE2 /* tsschecker.cpp */,
+				87B5C29529AE40DF00AD4923 /* TssRequest.hpp */,
+				87B5C29229AE3F9600AD4923 /* TssRequest.cpp */,
+				8717FE0029ADEB0E00B77DE2 /* main.cpp */,
 			);
 			path = tsschecker;
+			sourceTree = "<group>";
+		};
+		8717FE0A29ADEF7E00B77DE2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */,
+				87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */,
+				87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */,
+				87B5C28929AE229800AD4923 /* libirecovery.2.dylib */,
+				87B5C28329AE00EE00AD4923 /* libcurl.tbd */,
+				8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		87B5C28529AE03CD00AD4923 /* external */ = {
+			isa = PBXGroup;
+			children = (
+				8753870729B0847900D71685 /* jssy.c */,
+				8753870629B0847800D71685 /* jssy.h */,
+			);
+			name = external;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		87EB909E1C2940CD002CEE70 /* tsschecker */ = {
+		8717FDFC29ADEB0E00B77DE2 /* tsschecker */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 87EB90A61C2940CD002CEE70 /* Build configuration list for PBXNativeTarget "tsschecker" */;
+			buildConfigurationList = 8717FE0429ADEB0E00B77DE2 /* Build configuration list for PBXNativeTarget "tsschecker" */;
 			buildPhases = (
-				87EB909B1C2940CD002CEE70 /* Sources */,
-				87EB909C1C2940CD002CEE70 /* Frameworks */,
-				87EB909D1C2940CD002CEE70 /* CopyFiles */,
+				8717FDF929ADEB0E00B77DE2 /* Sources */,
+				8717FDFA29ADEB0E00B77DE2 /* Frameworks */,
+				8717FDFB29ADEB0E00B77DE2 /* CopyFiles */,
+				8717FE0E29ADEF7E00B77DE2 /* Embed Libraries */,
 			);
 			buildRules = (
 			);
@@ -167,72 +166,76 @@
 			);
 			name = tsschecker;
 			productName = tsschecker;
-			productReference = 87EB909F1C2940CD002CEE70 /* tsschecker */;
+			productReference = 8717FDFD29ADEB0E00B77DE2 /* tsschecker */;
 			productType = "com.apple.product-type.tool";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		87EB90971C2940CD002CEE70 /* Project object */ = {
+		8717FDF529ADEB0E00B77DE2 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1100;
-				ORGANIZATIONNAME = tihmstar;
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1420;
 				TargetAttributes = {
-					87EB909E1C2940CD002CEE70 = {
-						CreatedOnToolsVersion = 7.2;
+					8717FDFC29ADEB0E00B77DE2 = {
+						CreatedOnToolsVersion = 14.2;
 					};
 				};
 			};
-			buildConfigurationList = 87EB909A1C2940CD002CEE70 /* Build configuration list for PBXProject "tsschecker" */;
-			compatibilityVersion = "Xcode 6.3";
+			buildConfigurationList = 8717FDF829ADEB0E00B77DE2 /* Build configuration list for PBXProject "tsschecker" */;
+			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
-			mainGroup = 87EB90961C2940CD002CEE70;
-			productRefGroup = 87EB90A01C2940CD002CEE70 /* Products */;
+			mainGroup = 8717FDF429ADEB0E00B77DE2;
+			productRefGroup = 8717FDFE29ADEB0E00B77DE2 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				87EB909E1C2940CD002CEE70 /* tsschecker */,
+				8717FDFC29ADEB0E00B77DE2 /* tsschecker */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		87EB909B1C2940CD002CEE70 /* Sources */ = {
+		8717FDF929ADEB0E00B77DE2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5641335A22DFB62C00D04476 /* cmain.c in Sources */,
-				87F927AC1C3E44CE00343510 /* tsschecker.c in Sources */,
-				5641335D22DFB63300D04476 /* jssy.cpp in Sources */,
-				87CEC4C91C576BD9006E75FC /* tss.c in Sources */,
-				87F927AF1C3E455200343510 /* download.c in Sources */,
-				87EB90A31C2940CD002CEE70 /* main.c in Sources */,
-				87B93E861EE709A800709583 /* jssy.c in Sources */,
+				8753870829B0847900D71685 /* jssy.c in Sources */,
+				87B5C29829AE421D00AD4923 /* TSSException.cpp in Sources */,
+				8717FE1129ADF43400B77DE2 /* FirmwareAPI.cpp in Sources */,
+				87B5C29429AE3F9600AD4923 /* TssRequest.cpp in Sources */,
+				8717FE0929ADECF200B77DE2 /* tsschecker.cpp in Sources */,
+				8717FE1429ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp in Sources */,
+				8717FE0129ADEB0E00B77DE2 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		87EB90A41C2940CD002CEE70 /* Debug */ = {
+		8717FE0229ADEB0E00B77DE2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
-				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
@@ -241,17 +244,18 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -265,27 +269,31 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
-				MTL_ENABLE_DEBUG_INFO = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 			};
 			name = Debug;
 		};
-		87EB90A51C2940CD002CEE70 /* Release */ = {
+		8717FE0329ADEB0E00B77DE2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
-				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
 				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
 				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
 				CLANG_WARN_INFINITE_RECURSION = YES;
@@ -294,17 +302,18 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
@@ -312,42 +321,42 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 13.1;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
 			};
 			name = Release;
 		};
-		87EB90A71C2940CD002CEE70 /* Debug */ = {
+		8717FE0529ADEB0E00B77DE2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
-				CODE_SIGN_IDENTITY = "-";
-				GCC_PREFIX_HEADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					XCODE,
+					"EXCEPTIONNAME='TSSException'",
+					HAVE_COMMCRYPTO,
+				);
 				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/include",
 					/usr/local/include,
-					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
-				OTHER_CFLAGS = "-std=c11";
-				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
-		87EB90A81C2940CD002CEE70 /* Release */ = {
+		8717FE0629ADEB0E00B77DE2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = YES;
-				CODE_SIGN_IDENTITY = "-";
-				GCC_PREFIX_HEADER = "";
+				CODE_SIGN_STYLE = Automatic;
 				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/include",
 					/usr/local/include,
-					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = /usr/local/lib;
-				OTHER_CFLAGS = "-std=c11";
-				OTHER_CPLUSPLUSFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -355,25 +364,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		87EB909A1C2940CD002CEE70 /* Build configuration list for PBXProject "tsschecker" */ = {
+		8717FDF829ADEB0E00B77DE2 /* Build configuration list for PBXProject "tsschecker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				87EB90A41C2940CD002CEE70 /* Debug */,
-				87EB90A51C2940CD002CEE70 /* Release */,
+				8717FE0229ADEB0E00B77DE2 /* Debug */,
+				8717FE0329ADEB0E00B77DE2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		87EB90A61C2940CD002CEE70 /* Build configuration list for PBXNativeTarget "tsschecker" */ = {
+		8717FE0429ADEB0E00B77DE2 /* Build configuration list for PBXNativeTarget "tsschecker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				87EB90A71C2940CD002CEE70 /* Debug */,
-				87EB90A81C2940CD002CEE70 /* Release */,
+				8717FE0529ADEB0E00B77DE2 /* Debug */,
+				8717FE0629ADEB0E00B77DE2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 87EB90971C2940CD002CEE70 /* Project object */;
+	rootObject = 8717FDF529ADEB0E00B77DE2 /* Project object */;
 }

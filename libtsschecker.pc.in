@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libtsschecker
+Description: A library for TSS requests
+
+Requires: @libcurl_requires@ @libfragmentzip_requires@ @libgeneral_requires@ @libirecovery_requires@ @libplist_requires@ @openssl_requires@
+Version: @VERSION_COMMIT_COUNT@
+Libs: -L${libdir} -ltsschecker
+Cflags: -I${includedir}

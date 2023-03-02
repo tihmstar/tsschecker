@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libtsschecker
+Description: A library for TSS requests
+
+Requires: libcurl >= 7.0.0 libfragmentzip >= 65 libgeneral >= 39 libirecovery-1.0 >= 1.0.1 libplist-2.0 >= 2.2.0 openssl >= 0.9.8
+Version: 323
+Libs: -L${libdir} -ltsschecker
+Cflags: -I${includedir}
