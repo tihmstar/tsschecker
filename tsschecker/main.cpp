@@ -48,7 +48,7 @@ static struct option longopts[] = {
     { "update-install",     optional_argument, NULL, 'u' },
     { "buildid",            required_argument, NULL, 'Z' },
     { "buildid",            required_argument, NULL, 'Z' },
-    { "variant",            no_argument,       NULL, 'V' },
+    { "variant",            required_argument, NULL, 'V' },
     { "verbose",            no_argument,       NULL, 'v' },
 
     /* Long opts */
