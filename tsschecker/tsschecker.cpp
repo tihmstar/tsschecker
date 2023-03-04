@@ -187,7 +187,7 @@ uint64_t tsschecker::parseECID(const char *ecid){
         ecid += 2;
     }
 
-    {
+    if (!isHex){
         //try parse decimal
         const char *ecidBK = ecid;
         while (*ecid) {
@@ -198,6 +198,7 @@ uint64_t tsschecker::parseECID(const char *ecid){
             }else{
                 isHex = true;
                 ecid = ecidBK;
+                ret = 0;
                 goto parse_hex;
             }
         }

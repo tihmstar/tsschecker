@@ -444,6 +444,7 @@ void TssRequest::addAllAPComponentsToRequest(){
         bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest");
         if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) == 0) addComponent = false;
         else if (strncmp(key, "Savage", sizeof("Savage")-1) == 0) addComponent = false;
+        else if (strncmp(key, "Cryptex", sizeof("Cryptex")-1) == 0) addComponent = false;
 
         if (addComponent) {
             debug("Adding component '%s'",key);
