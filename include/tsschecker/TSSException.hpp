@@ -25,6 +25,10 @@ namespace tihmstar {
         using TSSException::TSSException;
     };
 
+    class TSSException_DBLookupFailed : public TSSException{
+        using TSSException::TSSException;
+    };
+
     //extended exceptions
     class TSSException_missingValue : public TSSException{
         std::string _keyname;

@@ -25,10 +25,20 @@ crypto_backend="none"
 AC_MSG_CHECKING([whether we need platform-specific build settings])
 case $host_os in
   darwin* )
-  AC_DEFINE(HAVE_COMMCRYPTO, 1, [Define if you have CommonCrypto (macOS)])
-  crypto_backend="CommCrypto"
-        ;;
+    AC_MSG_RESULT([${host_os}])
+    AC_DEFINE(HAVE_COMMCRYPTO, 1, [Define if you have CommonCrypto (macOS)])
+    crypto_backend="CommCrypto"
+  ;;
+  *mingw32*|*cygwin*)
+		AC_MSG_RESULT([${host_os}])
+    LDFLAGS+=" -no-undefined -lws2_32"
+		win32=true
+	;;
+	*)
+		AC_MSG_RESULT([${host_os}])
+  ;;
 esac
+AM_CONDITIONAL(WIN32, test x$win32 == xtrue)
 
 CXXFLAGS+=" -std=c++17"
 CFLAGS+=" -std=c11"
@@ -38,8 +48,8 @@ CFLAGS+=" -std=c11"
 LIBCURL_REQUIRES_STR="libcurl >= 7.0.0"
 LIBFRAGMENTZIP_REQUIRES_STR="libfragmentzip >= 65"
 LIBGENERAL_REQUIRES_STR="libgeneral >= 39"
-LIBIRECOVERY_REQUIRES_STR="libirecovery-1.0 >= 1.0.1"
-LIBPLIST_REQUIRES_STR="libplist-2.0 >= 2.2.0"
+LIBIRECOVERY_REQUIRES_STR="libirecovery-1.0 >= 1.0.0"
+LIBPLIST_REQUIRES_STR="libplist-2.0 >= 2.3.0"
 OPENSSL_REQUIRES_STR="openssl >= 0.9.8"
 
 PKG_CHECK_MODULES(libcurl, $LIBCURL_REQUIRES_STR)

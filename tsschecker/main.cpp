@@ -7,6 +7,8 @@
 
 #include <libgeneral/macros.h>
 #include <getopt.h>
+#include <time.h>
+#include <string.h>
 
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
 #include <tsschecker/tsschecker.hpp>
@@ -277,6 +279,10 @@ int main_r(int argc, const char * argv[]) {
         if (doPrintTssRequest) printf("\nrequest:\n%.*s\n",(int)req.size(),(char*)req.data());
         rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size());
         if (doPrintTssResponse) printf("response:\n%s\n",rsp);
+        if (savePath && rsp) {
+            writeFile(savePath, rsp, strlen(rsp));
+            info("Response saved to '%s'",savePath);
+        }
         return 0;
     }
 
@@ -284,7 +290,9 @@ int main_r(int argc, const char * argv[]) {
     cleanup([&]{
         if (fapi) {
             try{
-                if (useCache >= kCacheLoadAndStore) fapi->storecache();
+                if (useCache >= kCacheLoadAndStore){
+                    fapi->storecache();
+                }
             }catch(tihmstar::exception &e){
                 error("Failed to store cache with error:\n%s",e.dumpStr().c_str());
             }catch(...){
@@ -374,7 +382,7 @@ int main_r(int argc, const char * argv[]) {
             } else if (productType) {
                 fvers = fapi->getURLForDeviceAndBuild(productType, versionNumber, buildNumber);
             }
-            info("Got Firmware %s %s %s",fvers.version.c_str(),fvers.build.c_str(),fvers.url.c_str());
+            info("Got Firmware %s %s %s\n",fvers.version.c_str(),fvers.build.c_str(),fvers.url.c_str());
             p_BuildManifest = getBuildManifestFromUrl(fvers.url.c_str());
         }
         
@@ -424,10 +432,9 @@ int main_r(int argc, const char * argv[]) {
                     error("Failed to construct baseband requste with error:\n%s",e.dumpStr().c_str());
                     if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
                     warning("Skipping requesting baseband ticket due to previous errors");
-                    req.removeBasebandComponentsFromRequest();
                 }
             } catch (tihmstar::TSSException_missingValue &e) {
-                if (strncmp(e.keyname().c_str(), "Bb", 2) != 0 && requestSelection != kRequestSelectorDefaultBasebandOnly) throw;
+                if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) && requestSelection != kRequestSelectorDefaultBasebandOnly) throw;
                 warning("Skipping requesting baseband ticket, because required basenand values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
             }
         }

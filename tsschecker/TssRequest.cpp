@@ -10,6 +10,8 @@
 #include <tsschecker/TSSException.hpp>
 #include <libgeneral/macros.h>
 #include <curl/curl.h>
+#include <time.h>
+#include <string.h>
 
 #ifdef HAVE_OPENSSL
 #   include <openssl/sha.h>
@@ -53,11 +55,11 @@ static char *generate_guid(){
 #endif
 
 #pragma mark TSSRequest
-TssRequest::TssRequest(const plist_t pBuildManifest, std::string variant)
-: _pBuildManifest(plist_copy((plist_t)pBuildManifest)), _pReq(NULL)
+TssRequest::TssRequest(const plist_t pBuildManifest, std::string variant, bool isBuildIdentity)
+: _pBuildManifest(!isBuildIdentity ? plist_copy((plist_t)pBuildManifest) : NULL), _pBuildIdentity(isBuildIdentity ? plist_copy((plist_t)pBuildManifest) : NULL), _pReq(NULL)
 , _variant(variant), _generator(0)
 {
-    retassure(_pBuildManifest, "Failed to copy buildmanifest");
+    retassure(_pBuildManifest || _pBuildIdentity, "Failed to copy buildmanifest");
     retassure(_pReq = plist_new_dict(), "Failed to create new request");
 
     setStandardValues();
@@ -65,6 +67,7 @@ TssRequest::TssRequest(const plist_t pBuildManifest, std::string variant)
 
 TssRequest::~TssRequest(){
     safeFreeCustom(_pReq, plist_free);
+    safeFreeCustom(_pBuildIdentity, plist_free);
     safeFreeCustom(_pBuildManifest, plist_free);
 }
 
@@ -105,7 +108,7 @@ plist_t TssRequest::getTSSResponce(){
     retcustomassure(TSSException_NoTicket, rsp = TssSendPlistRequest(_pReq), "Failed to get ticket");
     {
         plist_t ret = NULL;
-        plist_from_memory(rsp, (uint32_t)strlen(rsp), &ret);
+        plist_from_memory(rsp, (uint32_t)strlen(rsp), &ret, NULL);
         if (ret) {
             if (_generator) {
                 char gbuf[100] = {};
@@ -126,12 +129,19 @@ bool TssRequest::isProductTypeValidForRequest(const char *productType){
     plist_t pSupportedProductType = NULL;
     plist_t pProductType = NULL;
 
-    retcustomassure(TSSException_unsupportedProductType, pSupportedProductType = plist_dict_get_item(_pBuildManifest, "SupportedProductTypes"), "Failed to get SupportedProductTypes");
-    
-    plist_array_new_iter(pSupportedProductType, &p_iter_SupportedProductType);
-    
-    for (plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType); pProductType; plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType)) {
-        if (plist_string_val_compare(pProductType, productType) == 0) return true;
+    if (_pBuildManifest) {
+        retcustomassure(TSSException_unsupportedProductType, pSupportedProductType = plist_dict_get_item(_pBuildManifest, "SupportedProductTypes"), "Failed to get SupportedProductTypes");
+        plist_array_new_iter(pSupportedProductType, &p_iter_SupportedProductType);
+        for (plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType); pProductType; plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType)) {
+            if (plist_string_val_compare(pProductType, productType) == 0) return true;
+        }
+    }else if (_pBuildIdentity){
+        bool isInvalid = false;
+        isInvalid |= (tsschecker::getCPIDForProductType(productType) != getNumberFromStringElementInDict(_pBuildIdentity, "ApChipID"));
+        isInvalid |= (tsschecker::getBDIDForProductType(productType) != getNumberFromStringElementInDict(_pBuildIdentity, "ApBoardID"));
+        return !isInvalid;
+    }else{
+        reterror("Unexpecte not having neither BuildManifest nor Buildidentity");
     }
     return false;
 }
@@ -288,8 +298,8 @@ void TssRequest::unsetAPNonce(){
 #pragma mark value getters
 uint32_t TssRequest::getCPID() const{
     plist_t pVal = NULL;
-    retassureMissingValue("ApBoardID", pVal = plist_dict_get_item(_pReq, "ApChipID"), "cpid not set");
-    retassureMissingValue("ApBoardID", plist_get_node_type(pVal) == PLIST_UINT, "cpid not UINT");
+    retassureMissingValue("ApChipID", pVal = plist_dict_get_item(_pReq, "ApChipID"), "ApChipID not set");
+    retassureMissingValue("ApChipID", plist_get_node_type(pVal) == PLIST_UINT, "ApChipID not UINT");
     {
         uint64_t ret = 0;
         plist_get_uint_val(pVal, &ret);
@@ -299,8 +309,8 @@ uint32_t TssRequest::getCPID() const{
 
 uint32_t TssRequest::getBDID() const{
     plist_t pVal = NULL;
-    retassureMissingValue("ApBoardID", pVal = plist_dict_get_item(_pReq, "ApBoardID"), "bdid not set");
-    retassureMissingValue("ApBoardID", plist_get_node_type(pVal) == PLIST_UINT, "bdid not UINT");
+    retassureMissingValue("ApBoardID", pVal = plist_dict_get_item(_pReq, "ApBoardID"), "ApBoardID not set");
+    retassureMissingValue("ApBoardID", plist_get_node_type(pVal) == PLIST_UINT, "ApBoardID not UINT");
     {
         uint64_t ret = 0;
         plist_get_uint_val(pVal, &ret);
@@ -310,12 +320,12 @@ uint32_t TssRequest::getBDID() const{
 
 uint64_t TssRequest::getECID() const{
     plist_t pVal = NULL;
-    retassureMissingValue("ApECID", pVal = plist_dict_get_item(_pReq, "ApECID"), "ecid not set");
-    retassureMissingValue("ApECID", plist_get_node_type(pVal) == PLIST_UINT, "ecid not UINT");
+    retassureMissingValue("ApECID", pVal = plist_dict_get_item(_pReq, "ApECID"), "ApECID not set");
+    retassureMissingValue("ApECID", plist_get_node_type(pVal) == PLIST_UINT, "ApECID not UINT");
     {
         uint64_t ret = 0;
         plist_get_uint_val(pVal, &ret);
-        return ret;
+        return (uint32_t)ret;
     }
 }
 
@@ -375,6 +385,7 @@ std::string TssRequest::getBuildVersion() const{
 
 
 plist_t TssRequest::getSelectedBuildIdentity(){
+    if (_pBuildIdentity) return _pBuildIdentity;
     plist_t pIdentity = NULL;
     if (!_variant.size()){
         try {
@@ -402,6 +413,15 @@ void TssRequest::addDefaultAPTagsToRequest(){
         return plist_dict_get_item(e, "PartialDigest");
     });
 
+    bool requiresUIDMode = (bool)iterateOverPlistElementsInDict(plist_dict_get_item(pIdentity, "Info"), [&](const char *key, plist_t e)->void*{
+        if (strcmp(key, "RequiresUIDMode") == 0) return (void*)(uint64_t)plist_bool_val_is_true(e);
+        return NULL;
+    });
+
+    if (requiresUIDMode) {
+        plist_dict_set_item(_pReq, "UID_MODE", plist_new_bool(0));
+    }
+    
     if (!hasPartialDigest) {
         //this is IMG4
         plist_dict_set_item(_pReq, "@ApImg4Ticket", plist_new_bool(1));
@@ -445,6 +465,8 @@ void TssRequest::addAllAPComponentsToRequest(){
         if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) == 0) addComponent = false;
         else if (strncmp(key, "Savage", sizeof("Savage")-1) == 0) addComponent = false;
         else if (strncmp(key, "Cryptex", sizeof("Cryptex")-1) == 0) addComponent = false;
+        else if (strncmp(key, "BMU", sizeof("BMU")-1) == 0) addComponent = false;
+        else if (strncmp(key, "eUICC", sizeof("eUICC")-1) == 0) addComponent = false;
 
         if (addComponent) {
             debug("Adding component '%s'",key);
@@ -598,6 +620,31 @@ std::string TssRequest::getVariantNameFromBuildIdentity(plist_t pBuildIdentity){
     return {str,str+strSize};
 }
 
+std::string TssRequest::getPathForComponentBuildIdentity(plist_t pBuildIdentity, const char *component){
+    plist_t pManifest = NULL;
+    plist_t pComponent = NULL;
+    plist_t pInfo = NULL;
+    plist_t pPath = NULL;
+    retassure(pManifest = plist_dict_get_item(pBuildIdentity, "Manifest"), "Failed to get Manifest");
+    retassureMissingValue(component, pComponent = plist_dict_get_item(pManifest, component), "Failed to get component in getPathForComponentBuildIdentity");
+    retassure(pInfo = plist_dict_get_item(pComponent, "Info"), "Failed to get component Info");
+    retassure(pPath = plist_dict_get_item(pInfo, "Path"), "Failed to get component Path");
+    {
+        const char *s = NULL;
+        uint64_t slen = 0;
+        retassure(s = plist_get_string_ptr(pPath, &slen), "Failed to get str ptr");
+        return {s,s+slen};
+    }
+}
+
+plist_t TssRequest::getElementForComponentBuildIdentity(plist_t pBuildIdentity, const char *component){
+    plist_t pManifest = NULL;
+    plist_t pComponent = NULL;
+    retassure(pManifest = plist_dict_get_item(pBuildIdentity, "Manifest"), "Failed to get Manifest");
+    retassureMissingValue(component, pComponent = plist_dict_get_item(pManifest, component), "Failed to get component in getPathForComponentBuildIdentity");
+    return pComponent;
+}
+
 void TssRequest::copyKeyFromPlist(plist_t request, plist_t manifest, const char *key, bool optional){
     plist_t pE = NULL;
     retassureMissingValue(key, (pE = plist_dict_get_item(manifest, key)) || optional, "Failed to copyKeyFromPlist");
@@ -611,6 +658,30 @@ uint64_t TssRequest::getNumberFromStringElementInDict(plist_t dict, const char *
     uint64_t slen = 0;
     retassure(s = plist_get_string_ptr(pE, &slen), "Failed to get '%s' string",key);
     return strtoll(s, NULL, base);
+}
+
+std::vector<uint8_t> TssRequest::getApImg4TicketFromTssResponse(plist_t tssrsp){
+    std::vector<uint8_t> ret;
+    plist_t pApImg4Ticket = NULL;
+    retassureMissingValue("ApImg4Ticket", (pApImg4Ticket = plist_dict_get_item(tssrsp, "ApImg4Ticket")), "Failed to get ApImg4Ticket from tssrsp");
+    {
+        const char *ptr = NULL;
+        uint64_t ptrSize = 0;
+        retassure(ptr = plist_get_data_ptr(pApImg4Ticket, &ptrSize), "Failed to get data ptr for ApImg4Ticket");
+        return {ptr,ptr+ptrSize};
+    }
+}
+
+std::vector<uint8_t> TssRequest::getElementFromTssResponse(plist_t tssrsp, const char *key){
+    std::vector<uint8_t> ret;
+    plist_t pApImg4Ticket = NULL;
+    retassureMissingValue(key, (pApImg4Ticket = plist_dict_get_item(tssrsp, key)), "Failed to get Element from tssrsp");
+    {
+        const char *ptr = NULL;
+        uint64_t ptrSize = 0;
+        retassure(ptr = plist_get_data_ptr(pApImg4Ticket, &ptrSize), "Failed to get data ptr for %s",key);
+        return {ptr,ptr+ptrSize};
+    }
 }
 
 void TssRequest::applyRestoreRulesForManifestComponent(plist_t component, plist_t restoreRules, plist_t tss_request){

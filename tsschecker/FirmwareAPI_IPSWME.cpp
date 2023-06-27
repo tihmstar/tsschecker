@@ -68,7 +68,8 @@ void FirmwareAPI_IPSWME::storecache(){
     cleanup([&]{
         safeClose(fd);
     });
-    auto cachepath = getCachePath() + (_ota ? "firmwares.json" : "ota.json");
+    auto cachepath = getCachePath() + (!_ota ? "firmwares.json" : "ota.json");
+    debug("Storing cache at %s",cachepath.c_str());
     retassure((fd = open(cachepath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0755)), "Failed to create file '%s'",cachepath.c_str());
     retassure(write(fd, _buf.data(), _buf.size()) == _buf.size(), "Failed to write to file");
 }

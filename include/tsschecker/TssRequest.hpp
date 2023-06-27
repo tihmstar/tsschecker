@@ -11,15 +11,19 @@
 #include <stdint.h>
 #include <plist/plist.h>
 #include <iostream>
+#include <vector>
 
-#define RESTORE_VARIANT_ERASE_INSTALL      "Erase Install (IPSW)"
-#define RESTORE_VARIANT_UPGRADE_INSTALL    "Upgrade Install (IPSW)"
-#define RESTORE_VARIANT_MACOS_RECOVERY_OS  "macOS Customer"
+#define RESTORE_VARIANT_ERASE_INSTALL               "Erase Install (IPSW)"
+#define RESTORE_VARIANT_UPGRADE_INSTALL             "Upgrade Install (IPSW)"
+#define RESTORE_VARIANT_RESEARCH_ERASE_INSTALL      "Research Customer Erase Install (IPSW)"
+#define RESTORE_VARIANT_RESEARCH_UPGRADE_INSTALL    "Research Customer Upgrade Install (IPSW)"
+#define RESTORE_VARIANT_MACOS_RECOVERY_OS           "macOS Customer"
 
 namespace tihmstar {
 namespace tsschecker {
 class TssRequest{
     plist_t _pBuildManifest;
+    plist_t _pBuildIdentity;
     plist_t _pReq;
 
     std::string _variant;
@@ -27,7 +31,7 @@ class TssRequest{
     
     void setStandardValues();
 public:
-    TssRequest(const plist_t pBuildManifest, std::string variant = "");
+    TssRequest(const plist_t pBuildManifest, std::string variant = "", bool isBuildIdentity = false);
     ~TssRequest();
     
     plist_t getTSSResponce();
@@ -84,11 +88,15 @@ public:
 #pragma mark static
     static plist_t getBuildIdentityForDevice(plist_t pBuildManifest, uint32_t cpid, uint32_t bdid, std::string variant = "");
     static std::string getVariantNameFromBuildIdentity(plist_t pBuildIdentity);
+    static std::string getPathForComponentBuildIdentity(plist_t pBuildIdentity, const char *component);
+    static plist_t getElementForComponentBuildIdentity(plist_t pBuildIdentity, const char *component);
 
     static void applyRestoreRulesForManifestComponent(plist_t component, plist_t restoreRules, plist_t tss_request);
     static void copyKeyFromPlist(plist_t request, plist_t manifest, const char *key, bool optional = false);
     static uint64_t getNumberFromStringElementInDict(plist_t dict, const char *key, int base = 16);
-    
+    static std::vector<uint8_t> getApImg4TicketFromTssResponse(plist_t tssrsp);
+    static std::vector<uint8_t> getElementFromTssResponse(plist_t tssrsp, const char *key);
+
     static char *TssSendPlistRequest(const plist_t tssreq, const char *server_url_string = NULL);
     static char *TssSendRawBuffer(const char *buf, size_t bufSize, const char *server_url_string = NULL);
 };

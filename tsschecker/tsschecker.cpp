@@ -7,6 +7,7 @@
 
 #include <tsschecker/tsschecker.hpp>
 
+#include <tsschecker/TSSException.hpp>
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
 #include <libgeneral/macros.h>
 #include <curl/curl.h>
@@ -15,6 +16,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <string.h>
 
 using namespace tihmstar;
 
@@ -324,7 +326,7 @@ plist_t tsschecker::getBuildManifestFromUrl(const char *ipswurl){
 
     {
         plist_t p_ret = NULL;
-        plist_from_memory(buf, (uint32_t)bufSize, &p_ret);
+        plist_from_memory(buf, (uint32_t)bufSize, &p_ret, NULL);
         return p_ret;
     }
 }
@@ -376,7 +378,7 @@ plist_t tsschecker::readPlist(const char *path){
     auto f = readFile(path);
     {
         plist_t ret = NULL;
-        plist_from_memory((char*)f.data(), (uint32_t)f.size(), &ret);
+        plist_from_memory((char*)f.data(), (uint32_t)f.size(), &ret, NULL);
         return ret;
     }
 }
@@ -485,7 +487,7 @@ const char *tsschecker::getBoardTypeFromProductType(const char *productType){
                         Apple produced the exact same device twice but with these different chips.
                         Thus, we can't uniquely identify one of these CPIDs solely by looking at the device type :(
                      */
-                    return 0;
+                    return NULL;
                     
                 default:
                     return dev->hardware_model;
@@ -520,19 +522,19 @@ uint32_t tsschecker::getCPIDForBoardType(const char *boardType){
     for (irecv_device_t dev = irecv_devices_get_all(); dev->hardware_model; dev++) {
         if (strcasecmp(dev->hardware_model, boardType) == 0) return dev->chip_id;
     }
-    return 0;
+    retcustomerror(TSSException_DBLookupFailed, "Failed to get CPID");
 }
 
 uint32_t tsschecker::getBDIDForBoardType(const char *boardType){
     for (irecv_device_t dev = irecv_devices_get_all(); dev->hardware_model; dev++) {
         if (strcasecmp(dev->hardware_model, boardType) == 0) return dev->board_id;
     }
-    return 0;
+    retcustomerror(TSSException_DBLookupFailed, "Failed to get BDID");
 }
 
 uint32_t tsschecker::getCPIDForProductType(const char *productType){
     for (irecv_device_t dev = irecv_devices_get_all(); dev->hardware_model; dev++) {
-        if (strcasecmp(dev->hardware_model, productType) == 0){
+        if (strcasecmp(dev->product_type, productType) == 0){
             switch (dev->chip_id) {
                 case 0x8000:
                 case 0x8003:
@@ -541,21 +543,21 @@ uint32_t tsschecker::getCPIDForProductType(const char *productType){
                         Apple produced the exact same device twice but with these different chips.
                         Thus, we can't uniquely identify one of these CPIDs solely by looking at the device type :(
                      */
-                    return 0;
-                    
+                    retcustomerror(TSSException_DBLookupFailed, "Failed to get CPID");
+
                 default:
                     return dev->chip_id;
             }
         }
     }
-    return 0;
+    retcustomerror(TSSException_DBLookupFailed, "Failed to get CPID");
 }
 
 uint32_t tsschecker::getBDIDForProductType(const char *productType){
     for (irecv_device_t dev = irecv_devices_get_all(); dev->hardware_model; dev++) {
         if (strcasecmp(dev->product_type, productType) == 0) return dev->board_id;
     }
-    return 0;
+    retcustomerror(TSSException_DBLookupFailed, "Failed to get CPID");
 }
 
 tsschecker::nonceType tsschecker::nonceTypeForCPID(uint32_t cpid){

@@ -23,5 +23,11 @@ m4
 missing
 stamp-h1
 tsschecker/tsschecker
+tsschecker.xcodeproj/project.xcworkspace/xcuserdata
 */xcuserdata/*
 configure~
+Build/
+tsschecker.xcodeproj/xcshareddata/xcschemes
+libtsschecker.pc
+project.xcworkspace
+xcshareddata
