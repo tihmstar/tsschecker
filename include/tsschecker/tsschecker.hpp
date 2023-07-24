@@ -67,6 +67,8 @@ namespace tsschecker {
     void *iterateOverPlistElementsInArray(plist_t array, std::function<void *(plist_t)> cb);
     void *iterateOverPlistElementsInDict(plist_t dict, std::function<void *(const char *,plist_t)> cb);
     void dumpplist(plist_t p);
+    
+    plist_t buildIdentityFromRestorePlist(plist_t restorePlist);
 };
 };
 

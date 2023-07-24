@@ -656,3 +656,211 @@ void tsschecker::dumpplist(plist_t p){
     plist_to_xml(p, &xml, &xmlSize);
     printf("%.*s\n",xmlSize,xml);
 }
+
+plist_t tsschecker::buildIdentityFromRestorePlist(plist_t restorePlist){
+    plist_t p_buildIdentity = NULL;
+    plist_t p_Manifest = NULL;
+    plist_t p_Info = NULL;
+    char *boardConfig_val = NULL;
+    char *kernelpath = NULL;
+    char *updateRamdiskPath = NULL;
+    char *userRamdiskPath = NULL;
+    cleanup([&]{
+        safeFree(userRamdiskPath);
+        safeFree(updateRamdiskPath);
+        safeFree(kernelpath);
+        safeFree(boardConfig_val);
+        safeFreeCustom(p_Info, plist_free);
+        safeFreeCustom(p_Manifest, plist_free);
+        safeFreeCustom(p_buildIdentity, plist_free);
+    });
+    plist_t p_DeviceMap = NULL;
+    plist_t p_DeviceMap_0 = NULL;
+    plist_t p_CPID = NULL;
+    plist_t p_BDID = NULL;
+    plist_t p_BoardConfig = NULL;
+    plist_t p_RestoreKernelCaches = NULL;
+    plist_t p_ReleaseKernelCache = NULL;
+    plist_t p_RestoreRamDisks = NULL;
+    plist_t p_UpdateRamdisk = NULL;
+    plist_t p_UserRamdisk = NULL;
+    plist_t p_ProductType = NULL;
+    uint64_t cpid_val = 0;
+
+    retassure(p_buildIdentity = plist_new_dict(), "Failed to alloc new buildidentity");
+    retassure(p_Manifest = plist_new_dict(), "Failed to alloc new manifest");
+    retassure(p_Info = plist_new_dict(), "Failed to alloc new p_Info");
+
+    retassure(p_DeviceMap = plist_dict_get_item(restorePlist, "DeviceMap"), "Failed to get 'DeviceMap'");
+    retassure(p_ProductType = plist_dict_get_item(restorePlist, "ProductType"), "Failed to get 'ProductType'");
+    if (!(p_DeviceMap_0 = plist_array_get_item(p_DeviceMap, 0))){
+        error("Failed to get DeviceMap[0]");
+    }else{
+        retassure(p_CPID = plist_dict_get_item(p_DeviceMap_0, "CPID"), "Failed to get 'CPID'");
+        retassure(p_BDID = plist_dict_get_item(p_DeviceMap_0, "BDID"), "Failed to get 'BDID'");
+        retassure(p_BoardConfig = plist_dict_get_item(p_DeviceMap_0, "BoardConfig"), "Failed to get 'BoardConfig'");
+    }
+    if (!(p_RestoreKernelCaches = plist_dict_get_item(restorePlist, "RestoreKernelCaches"))){
+        error("Failed to get 'RestoreKernelCaches'");
+    }else{
+        retassure(p_ReleaseKernelCache = plist_dict_get_item(p_RestoreKernelCaches, "Release"), "Failed to get 'RestoreKernelCaches'->'Release'");
+    }
+    if (!(p_RestoreRamDisks = plist_dict_get_item(restorePlist, "RestoreRamDisks"))){
+        error("Failed to get 'RestoreRamDisks''");
+    }else{
+        retassure(p_UpdateRamdisk = plist_dict_get_item(p_RestoreRamDisks, "Update"), "Failed to get 'RestoreRamDisks'->'Update'");
+        retassure(p_UserRamdisk = plist_dict_get_item(p_RestoreRamDisks, "User"), "Failed to get 'RestoreRamDisks'->'User'");
+    }
+
+    if (p_CPID){
+        retassure(plist_get_node_type(p_CPID) == PLIST_INT, "Failed to get cpid val");
+        plist_get_uint_val(p_CPID, &cpid_val);
+        char buf[0x100] = {};
+        snprintf(buf, sizeof(buf), "0x%llx",cpid_val);
+        plist_dict_set_item(p_buildIdentity, "ApChipID", plist_new_string(buf));
+    }
+
+    if (p_BDID){
+        uint64_t val = 0;
+        retassure(plist_get_node_type(p_BDID) == PLIST_INT, "Failed to get bdid val");
+        plist_get_uint_val(p_BDID, &val);
+        char buf[0x100] = {};
+        snprintf(buf, sizeof(buf), "0x%llx",val);
+        plist_dict_set_item(p_buildIdentity, "ApBoardID", plist_new_string(buf));
+    }
+
+    if (p_BoardConfig){
+        plist_get_string_val(p_BoardConfig, &boardConfig_val);
+        retassure(boardConfig_val, "Failed to get board config val");
+    }
+    
+    if (p_ReleaseKernelCache) {
+        plist_get_string_val(p_ReleaseKernelCache, &kernelpath);
+        retassure(kernelpath, "Failed to get kernelpath");
+    }
+
+    if (p_UpdateRamdisk) {
+        plist_get_string_val(p_UpdateRamdisk, &updateRamdiskPath);
+        retassure(updateRamdiskPath, "Failed to get updateRamdiskPath");
+    }
+
+    if (p_UserRamdisk) {
+        plist_get_string_val(p_UserRamdisk, &userRamdiskPath);
+        retassure(userRamdiskPath, "Failed to get userRamdiskPath");
+    }
+
+    auto addManifestElement = [](plist_t p_manifest, const char *element, const char *path)->void{
+        plist_t p_Info = NULL;
+        plist_t p_elem = NULL;
+        cleanup([&]{
+            safeFreeCustom(p_elem, plist_free);
+            safeFreeCustom(p_Info, plist_free);
+        });
+        p_elem = plist_new_dict();
+        p_Info = plist_new_dict();
+        plist_dict_set_item(p_Info, "Path", plist_new_string(path));
+        plist_dict_set_item(p_elem, "Info", p_Info); p_Info = NULL;
+        plist_dict_set_item(p_manifest, element, p_elem); p_elem = NULL;
+    };
+
+    
+    {
+        char buf[0x100] = {};
+        snprintf(buf, sizeof(buf), "Firmware/dfu/iBSS.%s.RELEASE.dfu",boardConfig_val);
+        addManifestElement(p_Manifest, "iBSS", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/dfu/iBEC.%s.RELEASE.dfu",boardConfig_val);
+        addManifestElement(p_Manifest, "iBEC", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/DeviceTree.%s.img3",boardConfig_val,boardConfig_val);
+        addManifestElement(p_Manifest, "DeviceTree", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/LLB.%s.RELEASE.img3",boardConfig_val,boardConfig_val);
+        addManifestElement(p_Manifest, "LLB", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/iBoot.%s.RELEASE.img3",boardConfig_val,boardConfig_val);
+        addManifestElement(p_Manifest, "iBoot", buf);
+        
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/needservice.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "NeedService", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/batterylow0.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "BatteryLow0", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/recoverymode.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "RecoveryMode", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/glyphcharging.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "BatteryCharging", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/applelogo.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "AppleLogo", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/batterylow1.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "BatteryLow1", buf);
+
+        snprintf(buf, sizeof(buf), "Firmware/all_flash/all_flash.%s.production/glyphplugin.s5l%xx.img3",boardConfig_val,(uint32_t)cpid_val);
+        addManifestElement(p_Manifest, "BatteryPlugin", buf);
+
+        if (kernelpath) {
+            addManifestElement(p_Manifest, "KernelCache", kernelpath);
+            addManifestElement(p_Manifest, "RestoreKernelCache", kernelpath);
+        }
+
+        if (userRamdiskPath) {
+            //erase install
+            addManifestElement(p_Manifest, "RestoreRamDisk", userRamdiskPath);
+        }
+    }
+
+    {
+        //erase mode
+        plist_dict_set_item(p_Info, "RestoreBehavior", plist_new_string("Erase"));
+        plist_dict_set_item(p_Info, "Variant", plist_new_string("Customer Erase Install (IPSW)"));
+        plist_dict_set_item(p_Info, "DeviceClass", plist_copy(p_BoardConfig));
+        plist_dict_set_item(p_buildIdentity, "Info", plist_copy(p_Info));
+    }
+    
+    {
+        plist_t p_BuildIdentities = NULL;
+        cleanup([&]{
+            safeFreeCustom(p_BuildIdentities, plist_free);
+        });
+        assure(p_BuildIdentities = plist_new_array());
+        
+        plist_dict_set_item(p_buildIdentity, "Manifest", plist_copy(p_Manifest));
+        plist_array_append_item(p_BuildIdentities, plist_copy(p_buildIdentity));
+        
+        {
+            //add update mode
+            plist_dict_set_item(p_Info, "RestoreBehavior", plist_new_string("Update"));
+            plist_dict_set_item(p_Info, "Variant", plist_new_string("Customer Upgrade Install (IPSW)"));
+            plist_dict_set_item(p_buildIdentity, "Info", plist_copy(p_Info));
+
+            if (updateRamdiskPath) {
+                addManifestElement(p_Manifest, "RestoreRamDisk", updateRamdiskPath);
+            }
+
+            plist_dict_set_item(p_buildIdentity, "Manifest", plist_copy(p_Manifest));
+            plist_array_append_item(p_BuildIdentities, plist_copy(p_buildIdentity));
+        }
+        
+        plist_dict_set_item(restorePlist, "BuildIdentities", p_BuildIdentities);p_BuildIdentities = NULL;
+    }
+    
+    {
+        plist_t p_SupportedProductTypes = NULL;
+        cleanup([&]{
+            safeFreeCustom(p_SupportedProductTypes, plist_free);
+        });
+        p_SupportedProductTypes = plist_new_array();
+        plist_array_append_item(p_SupportedProductTypes, plist_copy(p_ProductType));
+        plist_dict_set_item(restorePlist, "SupportedProductTypes", p_SupportedProductTypes); p_SupportedProductTypes = NULL;
+    }
+    
+    {
+        plist_t p_bi = NULL;
+        assure(p_bi = plist_dict_get_item(restorePlist, "BuildIdentities"));
+        return plist_array_get_item(restorePlist, 0);
+    }
+}
