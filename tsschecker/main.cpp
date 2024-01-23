@@ -5,15 +5,19 @@
 //  Created by tihmstar on 28.02.23.
 //
 
-#include <libgeneral/macros.h>
-#include <getopt.h>
-#include <time.h>
-#include <string.h>
-
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
 #include <tsschecker/tsschecker.hpp>
 #include <tsschecker/TssRequest.hpp>
 #include <tsschecker/TSSException.hpp>
+
+#include <libgeneral/macros.h>
+#include <libgeneral/Utils.hpp>
+
+#include <getopt.h>
+#include <time.h>
+#include <string.h>
+
+
 
 using namespace tihmstar::tsschecker;
 
@@ -275,12 +279,12 @@ int main_r(int argc, const char * argv[]) {
         cleanup([&]{
             safeFree(rsp);
         });
-        auto req = readFile(rawRequestPath);
+        auto req = tihmstar::readFile(rawRequestPath);
         if (doPrintTssRequest) printf("\nrequest:\n%.*s\n",(int)req.size(),(char*)req.data());
         rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size());
         if (doPrintTssResponse) printf("response:\n%s\n",rsp);
         if (savePath && rsp) {
-            writeFile(savePath, rsp, strlen(rsp));
+            tihmstar::writeFile(savePath, rsp, strlen(rsp));
             info("Response saved to '%s'",savePath);
         }
         return 0;

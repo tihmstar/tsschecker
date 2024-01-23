@@ -199,24 +199,32 @@ void TssRequest::setNonceGenerator(uint64_t generator){
     }
 }
 
-void TssRequest::setAPNonce(std::vector<uint8_t> nonce){
+void TssRequest::setAPNonce(const void *nonceData, size_t nonceSize){
     auto nonceType = tsschecker::nonceTypeForCPID(getCPID());
-    retassure(nonce.size() == 20 || nonceType != kNonceTypeSHA1, "Noncetype is SHA1 but noncelen is %d (expecting %d)",nonce.size(),20);
-    retassure(nonce.size() == 32 || nonceType != kNonceTypeSHA384, "Noncetype is SHA384 but noncelen is %d (expecting %d)",nonce.size(),32);
-    plist_dict_set_item(_pReq, "ApNonce", plist_new_data((char*)nonce.data(), nonce.size()));
+    retassure(nonceSize == 20 || nonceType != kNonceTypeSHA1, "Noncetype is SHA1 but noncelen is %d (expecting %d)",nonceSize,20);
+    retassure(nonceSize == 32 || nonceType != kNonceTypeSHA384, "Noncetype is SHA384 but noncelen is %d (expecting %d)",nonceSize,32);
+    plist_dict_set_item(_pReq, "ApNonce", plist_new_data((char*)nonceData, nonceSize));
 }
 
-void TssRequest::setSEPNonce(std::vector<uint8_t> nonce){
-    plist_dict_set_item(_pReq, "SepNonce", plist_new_data((char*)nonce.data(), nonce.size()));
+void TssRequest::setAPNonce(const tihmstar::Mem &nonce){
+    return setAPNonce(nonce.data(), nonce.size());
+}
+
+void TssRequest::setSEPNonce(const void *nonceData, size_t nonceSize){
+    plist_dict_set_item(_pReq, "SepNonce", plist_new_data((char*)nonceData, nonceSize));
+}
+
+void TssRequest::setSEPNonce(const tihmstar::Mem &nonce){
+    return setSEPNonce(nonce.data(), nonce.size());
 }
 
 void TssRequest::setRandomSEPNonce(){
-    std::vector<uint8_t> nonce;
+    tihmstar::Mem nonce;
     nonce.resize(SHA_DIGEST_LENGTH);
     srand((unsigned int)time(NULL));
     uint64_t sgen = ((uint64_t)rand() << 32) | rand();
     SHA1((const unsigned char*)&sgen, 8, nonce.data());
-    setSEPNonce(nonce);
+    setSEPNonce(nonce.data(), nonce.size());
 }
 
 void TssRequest::setBbGoldCertId(uint64_t bbgoldcertid){
@@ -231,7 +239,7 @@ void TssRequest::setDefaultBbGoldCertId(){
     setBbGoldCertIdForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
 }
 
-void TssRequest::setSNUM(std::vector<uint8_t> snum){
+void TssRequest::setSNUM(const tihmstar::Mem &snum){
     auto snumsize = getSNUMLenForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
     retassure(snum.size() == snumsize, "Bad BbSNUM len %d (expecting %d)",snum.size(),snumsize);
     plist_dict_set_item(_pReq, "BbSNUM", plist_new_data((char*)snum.data(), snum.size()));
@@ -239,9 +247,11 @@ void TssRequest::setSNUM(std::vector<uint8_t> snum){
 
 void TssRequest::setRandomSNUM(){
     auto snumsize = getSNUMLenForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
-    std::vector<uint8_t> snum;
+    tihmstar::Mem snum(snumsize);
     srand((unsigned int)time(NULL));
-    while (snum.size() < snumsize) snum.push_back((uint8_t)rand());
+    for (int i=0; i<snum.size(); i++) {
+        snum.data()[i] = (uint8_t)rand();
+    }
     setSNUM(snum);
 }
 
@@ -337,7 +347,7 @@ std::string TssRequest::getProductType() const{
     return getProductTypeFromCPIDandBDID(getCPID(), getBDID());
 }
 
-std::vector<uint8_t> TssRequest::getAPNonce() const{
+tihmstar::Mem TssRequest::getAPNonce() const{
     plist_t pVal = NULL;
     retassureMissingValue("ApNonce", pVal = plist_dict_get_item(_pReq, "ApNonce"), "ApNonce not set");
     retassureMissingValue("ApNonce", plist_get_node_type(pVal) == PLIST_DATA, "ApNonce not DATA");
@@ -345,15 +355,16 @@ std::vector<uint8_t> TssRequest::getAPNonce() const{
         const char *s = NULL;
         uint64_t slen = 0;
         retassureMissingValue("ApNonce", s = plist_get_data_ptr(pVal, &slen), "Failed to get DATA");
-        return {(uint8_t*)s,(uint8_t*)s+slen};
+        return {s,slen};
     }
 }
 
 std::string TssRequest::getAPNonceString() const{
     std::string ret;
-    for (auto v : getAPNonce()){
+    auto nonce = getAPNonce();
+    for (int i=0; i< nonce.size(); i++){
         char buf[4] = {};
-        snprintf(buf, sizeof(buf), "%02x",v);
+        snprintf(buf, sizeof(buf), "%02x",nonce.data()[i]);
         ret += buf;
     }
     return ret;
@@ -403,7 +414,7 @@ plist_t TssRequest::getSelectedBuildIdentity(){
 }
 
 #pragma mark configuration specifiers
-void TssRequest::addDefaultAPTagsToRequest(){
+void TssRequest::addDefaultAPTagsToRequest(bool skipOptional){
     plist_t pIdentity = getSelectedBuildIdentity();
     info("Adding default AP Tags to request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
     plist_dict_set_item(_pReq, "ApSecurityDomain", plist_new_uint(getNumberFromStringElementInDict(pIdentity,"ApSecurityDomain")));
@@ -417,7 +428,13 @@ void TssRequest::addDefaultAPTagsToRequest(){
         if (strcmp(key, "RequiresUIDMode") == 0) return (void*)(uint64_t)plist_bool_val_is_true(e);
         return NULL;
     });
-
+    
+    if (!skipOptional) {
+        if (plist_t wantsLove = plist_dict_get_item(pIdentity, "Ap,OSLongVersion")) {
+            plist_dict_set_item(_pReq, "Ap,OSLongVersion", plist_copy(wantsLove));
+        }
+    }
+    
     if (requiresUIDMode) {
         plist_dict_set_item(_pReq, "UID_MODE", plist_new_bool(0));
     }
@@ -435,14 +452,14 @@ void TssRequest::addDefaultAPTagsToRequest(){
     }
 }
 
-void TssRequest::addAllAPComponentsToRequest(){
+void TssRequest::addAllAPComponentsToRequest(bool skipNoniBootComponents){
     plist_t pIdentity = getSelectedBuildIdentity();
     info("Adding all AP components to request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
     
     copyKeyFromPlist(_pReq, pIdentity, "UniqueBuildID");
     plist_t pManifest = NULL;
     retassure(pManifest = plist_dict_get_item(pIdentity, "Manifest"), "Failed to get Manifest");
-    
+    bool isImg4 = plist_dict_get_item(_pReq, "@ApImg4Ticket");
     iterateOverPlistElementsInDict(pManifest, [&](const char *key, plist_t e)->void*{
         //add element to request
         plist_t pKey = NULL;
@@ -461,15 +478,18 @@ void TssRequest::addAllAPComponentsToRequest(){
                 applyRestoreRulesForManifestComponent(pKey, pRestoreRules, _pReq);
             }
         }
-        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest");
-        if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) == 0) addComponent = false;
-        else if (strncmp(key, "Savage", sizeof("Savage")-1) == 0) addComponent = false;
-        else if (strncmp(key, "Cryptex", sizeof("Cryptex")-1) == 0) addComponent = false;
-        else if (strncmp(key, "BMU", sizeof("BMU")-1) == 0) addComponent = false;
-        else if (strncmp(key, "eUICC", sizeof("eUICC")-1) == 0) addComponent = false;
+        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest") || plist_bool_val_is_true(plist_dict_get_item(pKey, "Trusted"));
+        if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) == 0) addComponent = !skipNoniBootComponents;
+        else if (strncmp(key, "Savage", sizeof("Savage")-1) == 0) addComponent = !skipNoniBootComponents;
+        else if (strncmp(key, "Cryptex", sizeof("Cryptex")-1) == 0) addComponent = !skipNoniBootComponents;
+        else if (strncmp(key, "BMU", sizeof("BMU")-1) == 0) addComponent = !skipNoniBootComponents;
+        else if (strncmp(key, "eUICC", sizeof("eUICC")-1) == 0) addComponent = !skipNoniBootComponents;
 
         if (addComponent) {
             debug("Adding component '%s'",key);
+            if (isImg4 && !plist_dict_get_item(pKey, "Digest")) {
+                plist_dict_set_item(pKey, "Digest", plist_new_data(NULL, 0));
+            }
             plist_dict_set_item(_pReq, key, pKey); pKey = NULL;
         }else{
             debug("Not adding component '%s'",key);
@@ -660,27 +680,27 @@ uint64_t TssRequest::getNumberFromStringElementInDict(plist_t dict, const char *
     return strtoll(s, NULL, base);
 }
 
-std::vector<uint8_t> TssRequest::getApImg4TicketFromTssResponse(plist_t tssrsp){
-    std::vector<uint8_t> ret;
+tihmstar::Mem TssRequest::getApImg4TicketFromTssResponse(plist_t tssrsp){
+    tihmstar::Mem ret;
     plist_t pApImg4Ticket = NULL;
     retassureMissingValue("ApImg4Ticket", (pApImg4Ticket = plist_dict_get_item(tssrsp, "ApImg4Ticket")), "Failed to get ApImg4Ticket from tssrsp");
     {
         const char *ptr = NULL;
         uint64_t ptrSize = 0;
         retassure(ptr = plist_get_data_ptr(pApImg4Ticket, &ptrSize), "Failed to get data ptr for ApImg4Ticket");
-        return {ptr,ptr+ptrSize};
+        return {ptr,ptrSize};
     }
 }
 
-std::vector<uint8_t> TssRequest::getElementFromTssResponse(plist_t tssrsp, const char *key){
-    std::vector<uint8_t> ret;
+tihmstar::Mem TssRequest::getElementFromTssResponse(plist_t tssrsp, const char *key){
+    tihmstar::Mem ret;
     plist_t pApImg4Ticket = NULL;
     retassureMissingValue(key, (pApImg4Ticket = plist_dict_get_item(tssrsp, key)), "Failed to get Element from tssrsp");
     {
         const char *ptr = NULL;
         uint64_t ptrSize = 0;
         retassure(ptr = plist_get_data_ptr(pApImg4Ticket, &ptrSize), "Failed to get data ptr for %s",key);
-        return {ptr,ptr+ptrSize};
+        return {ptr,ptrSize};
     }
 }
 

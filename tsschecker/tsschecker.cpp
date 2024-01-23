@@ -6,13 +6,15 @@
 //
 
 #include <tsschecker/tsschecker.hpp>
-
 #include <tsschecker/TSSException.hpp>
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
+
 #include <libgeneral/macros.h>
-#include <curl/curl.h>
+#include <libgeneral/Utils.hpp>
 #include <libirecovery.h>
 #include <libfragmentzip/libfragmentzip.h>
+#include <curl/curl.h>
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -225,13 +227,13 @@ uint64_t tsschecker::parseECID(const char *ecid){
     return ret;
 }
 
-std::vector<uint8_t> tsschecker::parseHex(const char *hexstr){
-    std::vector<uint8_t> ret;
+tihmstar::Mem tsschecker::parseHex(const char *hexstr){
+    tihmstar::Mem ret;
     ret.resize(strlen(hexstr));
     size_t i = 0;
     while (*hexstr) {
         char c = *hexstr++;
-        uint8_t &v = ret[(i++)/2];
+        uint8_t &v = ret.data()[(i++)/2];
         v <<= 4;
         if (c >= '0' && c<='9') {
             v += c - '0';
@@ -279,13 +281,13 @@ tsschecker::firmwareVersion tsschecker::firmwareVersionFromBuildManifest(plist_t
 
 
 #pragma mark downloaders
-std::vector<uint8_t> tsschecker::downloadFile(const char *url){
+tihmstar::Mem tsschecker::downloadFile(const char *url){
     debug("Downloading file '%s'",url);
     CURL *mcurl = NULL;
     cleanup([&]{
         safeFreeCustom(mcurl, curl_easy_cleanup);
     });
-    std::vector<uint8_t> ret;
+    tihmstar::Mem ret;
     CURLcode res = {};
     
     mcurl = curl_easy_init();
@@ -296,14 +298,32 @@ std::vector<uint8_t> tsschecker::downloadFile(const char *url){
     curl_easy_setopt(mcurl, CURLOPT_WRITEFUNCTION, (size_t (*)(void *, size_t, size_t, void *))[](void *contents, size_t size, size_t nmemb, void *userp)->size_t{
         uint8_t *ptr = (uint8_t*)contents;
         size_t realsize = size * nmemb;
-        std::vector<uint8_t> *mem = (std::vector<uint8_t> *)userp;;
-        mem->insert(mem->end(), ptr,ptr+realsize);
+        tihmstar::Mem *mem = (tihmstar::Mem *)userp;;
+        mem->append(ptr, realsize);
         return realsize;
     });
     curl_easy_setopt(mcurl, CURLOPT_WRITEDATA, (void *)&ret);
     
     retassure((res = curl_easy_perform(mcurl)) == CURLE_OK, "curl failed with error=%d",res);
     return ret;
+}
+
+tihmstar::Mem tsschecker::downloadFileFromIPSW(const char *ipswurl, const char *path){
+    fragmentzip_t *fz = NULL;
+    char *buf = NULL;
+    cleanup([&]{
+        safeFree(buf);
+        safeFreeCustom(fz, fragmentzip_close);
+    });
+    size_t bufSize = 0;
+    int err = 0;
+    
+    retassure(fz = fragmentzip_open(ipswurl), "Failed to open url: '%s'",ipswurl);
+    retassure(!(err = fragmentzip_download_to_memory(fz, path, &buf, &bufSize, fragmentzip_callback)), "Failed to download '%s' with err=%d",path,err);
+    {
+        Mem ret{buf,bufSize}; buf = NULL; bufSize = 0;
+        return ret;
+    }
 }
 
 plist_t tsschecker::getBuildManifestFromUrl(const char *ipswurl){
@@ -359,37 +379,13 @@ tsschecker::firmwareVersion tsschecker::getLatestFirmwareForDevice(uint32_t cpid
 }
 
 #pragma mark file handling
-std::vector<uint8_t> tsschecker::readFile(const char *path){
-    int fd = -1;
-    cleanup([&]{
-        safeClose(fd);
-    });
-    struct stat st = {};
-    std::vector<uint8_t> ret;
-
-    retassure((fd = open(path, O_RDONLY)), "Failed to read file '%s'",path);
-    retassure(!fstat(fd, &st), "Failed to stat file");
-    ret.resize(st.st_size);
-    retassure(read(fd, ret.data(), ret.size()) == ret.size(), "Failed to read from file");
-    return ret;
-}
-
 plist_t tsschecker::readPlist(const char *path){
-    auto f = readFile(path);
+    auto f = tihmstar::readFile(path);
     {
         plist_t ret = NULL;
         plist_from_memory((char*)f.data(), (uint32_t)f.size(), &ret, NULL);
         return ret;
     }
-}
-
-void tsschecker::writeFile(const char *path, void *data, size_t dataSize){
-    int fd = -1;
-    cleanup([&]{
-        safeClose(fd);
-    });
-    retassure((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0755)), "Failed to write file '%s'",path);
-    retassure(write(fd, data, dataSize) == dataSize, "Failed to write data");
 }
 
 void tsschecker::writePlist(const char *path, plist_t plist){

@@ -9,6 +9,7 @@
 #define FirmwareAPI_IPSWME_hpp
 
 #include <tsschecker/FirmwareAPI.hpp>
+#include <libgeneral/Mem.hpp>
 #include <stdint.h>
 #include <vector>
 #include <map>
@@ -20,7 +21,7 @@ class FirmwareAPI_IPSWME : public FirmwareAPI {
     bool _ota;
     jssytok *_tokens;
 
-    std::vector<uint8_t> _buf;
+    tihmstar::Mem _buf;
     std::vector<std::string> _devicesCache;
     std::map<std::string,std::vector<firmwareVersion>> _versionsCache;
 public:
