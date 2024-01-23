@@ -29,7 +29,7 @@ case $host_os in
     AC_DEFINE(HAVE_COMMCRYPTO, 1, [Define if you have CommonCrypto (macOS)])
     crypto_backend="CommCrypto"
   ;;
-  *mingw32*|*cygwin*)
+  *mingw32*|*cygwin*|*msys*)
 		AC_MSG_RESULT([${host_os}])
     LDFLAGS+=" -no-undefined -lws2_32"
 		win32=true

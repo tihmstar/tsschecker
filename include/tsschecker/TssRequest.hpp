@@ -8,10 +8,11 @@
 #ifndef TssRequest_hpp
 #define TssRequest_hpp
 
-#include <stdint.h>
+#include <libgeneral/Mem.hpp>
 #include <plist/plist.h>
 #include <iostream>
 #include <vector>
+#include <stdint.h>
 
 #define RESTORE_VARIANT_ERASE_INSTALL               "Erase Install (IPSW)"
 #define RESTORE_VARIANT_UPGRADE_INSTALL             "Upgrade Install (IPSW)"
@@ -43,15 +44,17 @@ public:
     void setDeviceVals(uint32_t cpid, uint32_t bdid, bool force = false);
     void setEcid(uint64_t ecid);
     void setNonceGenerator(uint64_t generator);
-    void setAPNonce(std::vector<uint8_t> nonce);
-    void setSEPNonce(std::vector<uint8_t> nonce);
+    void setAPNonce(const void *nonceData, size_t nonceSize);
+    void setAPNonce(const tihmstar::Mem &nonce);
+    void setSEPNonce(const void *nonceData, size_t nonceSize);
+    void setSEPNonce(const tihmstar::Mem &nonce);
     void setRandomSEPNonce();
     
     //baseband
     void setBbGoldCertId(uint64_t bbgoldcertid);
     void setBbGoldCertIdForDevice(const char *productType);
     void setDefaultBbGoldCertId();
-    void setSNUM(std::vector<uint8_t> snum);
+    void setSNUM(const tihmstar::Mem &snum);
     void setRandomSNUM();
 
     //advances
@@ -65,7 +68,7 @@ public:
     uint64_t getECID() const;
     uint64_t getGenerator() const;
     std::string getProductType() const;
-    std::vector<uint8_t> getAPNonce() const;
+    tihmstar::Mem getAPNonce() const;
     std::string getAPNonceString() const;
 
     std::string getProductVersion() const;
@@ -74,8 +77,8 @@ public:
     plist_t getSelectedBuildIdentity();
     
 #pragma mark configuration specifiers
-    void addDefaultAPTagsToRequest();
-    void addAllAPComponentsToRequest();
+    void addDefaultAPTagsToRequest(bool skipOptional = false);
+    void addAllAPComponentsToRequest(bool skipNoniBootComponents = false);
     void addBasebandComponentsToRequest();
     void addYonkersComponentsToRequest();
 
@@ -94,8 +97,8 @@ public:
     static void applyRestoreRulesForManifestComponent(plist_t component, plist_t restoreRules, plist_t tss_request);
     static void copyKeyFromPlist(plist_t request, plist_t manifest, const char *key, bool optional = false);
     static uint64_t getNumberFromStringElementInDict(plist_t dict, const char *key, int base = 16);
-    static std::vector<uint8_t> getApImg4TicketFromTssResponse(plist_t tssrsp);
-    static std::vector<uint8_t> getElementFromTssResponse(plist_t tssrsp, const char *key);
+    static tihmstar::Mem getApImg4TicketFromTssResponse(plist_t tssrsp);
+    static tihmstar::Mem getElementFromTssResponse(plist_t tssrsp, const char *key);
 
     static char *TssSendPlistRequest(const plist_t tssreq, const char *server_url_string = NULL);
     static char *TssSendRawBuffer(const char *buf, size_t bufSize, const char *server_url_string = NULL);

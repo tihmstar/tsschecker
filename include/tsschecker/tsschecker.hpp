@@ -8,11 +8,12 @@
 #ifndef tsschecker_hpp
 #define tsschecker_hpp
 
-#include <stdint.h>
-#include <vector>
-#include <plist/plist.h>
-#include <functional>
 #include <tsschecker/TssRequest.hpp>
+#include <libgeneral/Mem.hpp>
+#include <plist/plist.h>
+#include <vector>
+#include <functional>
+#include <stdint.h>
 
 namespace tihmstar {
 namespace tsschecker {
@@ -30,18 +31,17 @@ namespace tsschecker {
 
 #pragma mark parsers
     uint64_t parseECID(const char *ecid);
-    std::vector<uint8_t> parseHex(const char *hexstr);
+    tihmstar::Mem parseHex(const char *hexstr);
     firmwareVersion firmwareVersionFromBuildManifest(plist_t pBuildManifest);
 
 #pragma mark downloaders
-    std::vector<uint8_t> downloadFile(const char *url);
+    tihmstar::Mem downloadFile(const char *url);
+    tihmstar::Mem downloadFileFromIPSW(const char *ipswurl, const char *path);
     plist_t getBuildManifestFromUrl(const char *ipswurl);
     firmwareVersion getLatestFirmwareForDevice(uint32_t cpid, uint32_t bdid, bool ota = false);
 
 #pragma mark file handling
-    std::vector<uint8_t> readFile(const char *path);
     plist_t readPlist(const char *path);
-    void writeFile(const char *path, void *data, size_t dataSize);
     void writePlist(const char *path, plist_t plist);
 
     std::string getTicketSavePathFromRequest(const char *path, const TssRequest &req);
