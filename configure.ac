@@ -47,7 +47,7 @@ CFLAGS+=" -std=c11"
 # Checks for libraries.
 LIBCURL_REQUIRES_STR="libcurl >= 7.0.0"
 LIBFRAGMENTZIP_REQUIRES_STR="libfragmentzip >= 65"
-LIBGENERAL_REQUIRES_STR="libgeneral >= 39"
+LIBGENERAL_REQUIRES_STR="libgeneral >= 75"
 LIBIRECOVERY_REQUIRES_STR="libirecovery-1.0 >= 1.0.0"
 LIBPLIST_REQUIRES_STR="libplist-2.0 >= 2.3.0"
 OPENSSL_REQUIRES_STR="openssl >= 0.9.8"
