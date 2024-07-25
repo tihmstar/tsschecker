@@ -39,8 +39,8 @@ void FirmwareAPI_IPSWME::load(){
     _buf = tsschecker::downloadFile(_ota ? FIRMWARE_OTA_JSON_URL : FIRMWARE_JSON_URL);
     retassure((tokencnt = jssy_parse((const char*)_buf.data(), _buf.size(), NULL, 0)) > 0, "Failed to parse json");
     safeFree(_tokens);
-    _tokens = (jssytok_t*)malloc(tokencnt * sizeof(jssytok_t));
-    retassure((tokencnt = jssy_parse((const char*)_buf.data(), _buf.size(), _tokens, tokencnt * sizeof(jssytok_t))) > 0, "Failed to parse json");
+    _tokens = (jssytok_t*)calloc(1, tokencnt * sizeof(jssytok_t));
+    retassure((tokencnt = jssy_parse((const char*)_buf.data(), _buf.size(), _tokens, tokencnt * sizeof(jssytok_t))) > 1, "Failed to parse json");
 }
 
 void FirmwareAPI_IPSWME::loadcache(){
@@ -59,7 +59,7 @@ void FirmwareAPI_IPSWME::loadcache(){
 
     retassure((tokencnt = jssy_parse((const char*)_buf.data(), _buf.size(), NULL, 0)) > 0, "Failed to parse json");
     safeFree(_tokens);
-    _tokens = (jssytok_t*)malloc(tokencnt * sizeof(jssytok_t));
+    _tokens = (jssytok_t*)calloc(1, tokencnt * sizeof(jssytok_t));
     retassure((tokencnt = jssy_parse((const char*)_buf.data(), _buf.size(), _tokens, tokencnt * sizeof(jssytok_t))) > 0, "Failed to parse json");
 }
 
@@ -177,6 +177,7 @@ std::vector<FirmwareAPI::firmwareVersion> FirmwareAPI_IPSWME::listVersionsForDev
 FirmwareAPI::firmwareVersion FirmwareAPI_IPSWME::getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version, std::string build){
     std::string device = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
     auto firmwares = listVersionsForDevice(device);
+    retassure(firmwares.size(), "no firmwares found for device '%s'",device.c_str());
     transform(build.begin(), build.end(), build.begin(), ::tolower);
     if (build.size() || version.size()) {
         for (auto f : firmwares) {

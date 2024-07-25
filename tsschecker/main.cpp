@@ -49,7 +49,7 @@ static struct option longopts[] = {
     { "build-manifest",     required_argument, NULL, 'm' },
     { "apnonce",            required_argument, NULL, 'N' },
     { "ota",                no_argument,       NULL, 'o' },
-    { "save",               no_argument,       NULL, 's' },
+    { "save",               optional_argument, NULL, 's' },
     { "sepnonce",           required_argument, NULL, 'S' },
     { "update-install",     optional_argument, NULL, 'u' },
     { "buildid",            required_argument, NULL, 'Z' },
@@ -154,7 +154,7 @@ int main_r(int argc, const char * argv[]) {
     uint64_t ecid = 0;
     uint64_t generator = 0;
 
-    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:d:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
+    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:g:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0:
             {

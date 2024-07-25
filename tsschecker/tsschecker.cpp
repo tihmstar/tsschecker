@@ -292,7 +292,6 @@ tihmstar::Mem tsschecker::downloadFile(const char *url){
     
     mcurl = curl_easy_init();
     
-    
     curl_easy_setopt(mcurl, CURLOPT_URL, url);
     curl_easy_setopt(mcurl, CURLOPT_TIMEOUT, 20L); //20 sec
     curl_easy_setopt(mcurl, CURLOPT_WRITEFUNCTION, (size_t (*)(void *, size_t, size_t, void *))[](void *contents, size_t size, size_t nmemb, void *userp)->size_t{
