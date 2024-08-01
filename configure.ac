@@ -17,8 +17,8 @@ AC_SUBST([VERSION_COMMIT_SHA], ["m4_esyscmd([git rev-parse HEAD | tr -d '\n'])"]
 
 
 # Checks for programs.
-AC_PROG_CXX
-AC_PROG_CC
+AC_PROG_CC([clang])
+AC_PROG_CXX([clang++])
 
 crypto_backend="none"
 # Check for operating system
