@@ -72,6 +72,7 @@ static struct bbdevice bbdevices[] = {
     {"iPhone12,3", 524245983, 12}, // iPhone 11 Pro
     {"iPhone12,5", 524245983, 12}, // iPhone 11 Pro Max
     {"iPhone12,8", 524245983, 12}, // iPhone SE (2020)
+    {"iPhone15,2", 3559316616, 4}, // iPhone 14 Pro
     
     // iPads
     {"iPad1,1", 0, 0}, // iPad (1st gen)
