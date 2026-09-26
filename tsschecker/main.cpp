@@ -59,8 +59,10 @@ static struct option longopts[] = {
 
     /* Long opts */
     { "bbsnum",             required_argument, NULL,  0  },
+    { "bdid",               required_argument, NULL,  0  },
     { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
+    { "cpid",               required_argument, NULL,  0  },
 
     /* Info & Listing */
     { "list-devices",       no_argument,       NULL,  0  },
@@ -101,9 +103,11 @@ void cmd_help(){
 
     /* Long opts */
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
+    printf("      --bdid <bdid> Manually specify bdid\n");
     printf("      --beta\t\t\trequest ticket for beta instead of normal release (use with -o)\n");
     printf("      --cache\t\t\tCache requests to firmware api\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
+    printf("      --cpid <cpid> Manually specify cpid\n");
 
     /* Info & Listing */
     printf("      --list-devices\t\tlist all known devices\n");
@@ -153,6 +157,8 @@ int main_r(int argc, const char * argv[]) {
     
     uint64_t ecid = 0;
     uint64_t generator = 0;
+    uint32_t cpid = 0;
+    uint32_t bdid = 0;
 
     while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:g:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
         switch (opt) {
@@ -168,6 +174,10 @@ int main_r(int argc, const char * argv[]) {
                         whitelistComponents.push_back(scomp);
                     }
                     whitelistComponents.push_back(components);
+                }else if (curopt == "bdid") {
+                    bdid = (uint32_t)parseECID(optarg);
+                }else if (curopt == "cpid") {
+                    cpid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "list-devices") {
                     doListDevices = true;
                 } else if (curopt == "list-versions") {
@@ -340,7 +350,9 @@ int main_r(int argc, const char * argv[]) {
         error("No device specified!");
         return -1;
     }
-    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productType,boardType,getCPIDForBoardType(boardType),getBDIDForBoardType(boardType));
+    if (!cpid) cpid = getCPIDForBoardType(boardType);
+    if (!bdid) bdid = getBDIDForBoardType(boardType);
+    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productType,boardType,cpid,bdid);
     if (!ecid) {
         warning("No ecid specified, generating random ecid!");
         srand((unsigned)time(NULL));
@@ -394,7 +406,7 @@ int main_r(int argc, const char * argv[]) {
         
         TssRequest req(p_BuildManifest,restoreVariant);
         
-        req.setDeviceVals(getCPIDForBoardType(boardType), getBDIDForBoardType(boardType));
+        req.setDeviceVals(cpid, bdid, false, productType);
         req.setEcid(ecid);
         if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
             req.addDefaultAPTagsToRequest();

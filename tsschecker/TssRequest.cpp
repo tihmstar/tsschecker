@@ -147,11 +147,10 @@ bool TssRequest::isProductTypeValidForRequest(const char *productType){
 }
     
 #pragma mark value modifiers
-void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force){
-    const char *productType = NULL;
+void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force, const char *productType){
     try{
         //check whether the ProductType is supported
-        productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
+        if (!productType) productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
         retcustomassure(TSSException_unsupportedProductType, isProductTypeValidForRequest(productType), "ProductType is not valid for this request");
     }catch (tihmstar::TSSException_unsupportedProductType &e){
         if (!force) throw;
