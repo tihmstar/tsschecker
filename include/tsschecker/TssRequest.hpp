@@ -14,8 +14,8 @@
 #include <vector>
 #include <stdint.h>
 
-#define RESTORE_VARIANT_ERASE_INSTALL               "Erase Install (IPSW)"
-#define RESTORE_VARIANT_UPGRADE_INSTALL             "Upgrade Install (IPSW)"
+#define RESTORE_VARIANT_ERASE_INSTALL               "Customer Erase Install (IPSW)"
+#define RESTORE_VARIANT_UPGRADE_INSTALL             "Customer Upgrade Install (IPSW)"
 #define RESTORE_VARIANT_RESEARCH_ERASE_INSTALL      "Research Customer Erase Install (IPSW)"
 #define RESTORE_VARIANT_RESEARCH_UPGRADE_INSTALL    "Research Customer Upgrade Install (IPSW)"
 #define RESTORE_VARIANT_MACOS_RECOVERY_OS           "macOS Customer"

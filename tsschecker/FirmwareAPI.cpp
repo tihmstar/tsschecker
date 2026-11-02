@@ -61,11 +61,9 @@ FirmwareAPI::firmwareVersion FirmwareAPI::getURLForDeviceAndBuild(std::string de
     retassure(firmwares.size(), "no firmwares found for device '%s'",device.c_str());
     if (!build.size() && !version.size()) return firmwares.front();
     for (auto &f : firmwares) {
-        if (build.size()) {
-            if (strcasecmp(f.build.c_str(), build.c_str()) == 0) return f;
-        }else if (f.version == version) {
-            return f;
-        }
+        if (build.size() && strcasecmp(f.build.c_str(), build.c_str()) != 0) continue;
+        if (version.size() && f.version != version) continue;
+        return f;
     }
     reterror("Failed to find firmware '%s' '%s' for device '%s'",version.c_str(),build.c_str(),device.c_str());
 }

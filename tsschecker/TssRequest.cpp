@@ -640,9 +640,19 @@ plist_t TssRequest::getBuildIdentityForDevice(plist_t pBuildManifest, uint32_t c
     plist_t pBuildIdentities = NULL;
     retassure(pBuildIdentities = plist_dict_get_item(pBuildManifest, "BuildIdentities"), "Failed to get BuildIdentities");
     
+    auto idNumber = [](plist_t e, const char *key, uint64_t &out)->bool{
+        plist_t v = plist_dict_get_item(e, key);
+        const char *str = NULL;
+        uint64_t len = 0;
+        if (!v || !(str = plist_get_string_ptr(v, &len))) return false;
+        out = strtoull(str, NULL, 16);
+        return true;
+    };
+
     std::vector<plist_t> candidates;
     iterateOverPlistElementsInArray(pBuildIdentities, [&](plist_t e)->void*{
-        if (getNumberFromStringElementInDict(e, "ApChipID") == cpid && getNumberFromStringElementInDict(e, "ApBoardID") == bdid) {
+        uint64_t idCpid = 0, idBdid = 0;
+        if (idNumber(e, "ApChipID", idCpid) && idNumber(e, "ApBoardID", idBdid) && idCpid == cpid && idBdid == bdid) {
             candidates.push_back(e);
         }
         return NULL;
@@ -651,13 +661,9 @@ plist_t TssRequest::getBuildIdentityForDevice(plist_t pBuildManifest, uint32_t c
     for (auto e : candidates) {
         if (getVariantNameFromBuildIdentity(e) == variant) return e;
     }
-    //partial names like "Erase Install (IPSW)" must not select a Research variant unless asked for
-    bool wantsResearch = variant.find("Research") != std::string::npos;
+    //allow a variant without its trailing qualifier, e.g. "Customer Upgrade Install" for "Customer Upgrade Install (IPSW)"
     for (auto e : candidates) {
-        auto v = getVariantNameFromBuildIdentity(e);
-        if (v.find(variant) == std::string::npos) continue;
-        if (!wantsResearch && v.find("Research") != std::string::npos) continue;
-        return e;
+        if (getVariantNameFromBuildIdentity(e).rfind(variant, 0) == 0) return e;
     }
     return NULL;
 }
