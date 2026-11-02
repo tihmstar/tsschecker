@@ -403,7 +403,7 @@ std::string tsschecker::getTicketSavePathFromRequest(const char *path, const Tss
     if (stat(path, &st) || !S_ISDIR(st.st_mode)) return path;
     //dst path is a directory, generate a filename
     std::string ret = path;
-    if (ret.back() != '/') ret += '\n';
+    if (ret.back() != '/') ret += '/';
     
     ret += req.getProductType() + "_";
     {

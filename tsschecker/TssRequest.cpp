@@ -26,7 +26,7 @@
 #endif // HAVE_OPENSSL
 
 using namespace tihmstar::tsschecker;
-#define TSS_CLIENT_VERSION_STRING "libauthinstall-698.0.5"
+#define TSS_CLIENT_VERSION_STRING "libauthinstall-1104.0.9"
 
 
 #define TSS_MAX_TRIES 10
@@ -77,12 +77,8 @@ void TssRequest::setStandardValues(){
     plist_dict_set_item(_pReq, "@HostPlatformInfo",
 #if defined(WIN32)
         plist_new_string("windows")
-#elif defined(__APPLE__)
-        plist_new_string("mac")
-#elif defined(LINUX)
-        plist_new_string("linux")
 #else
-        plist_new_string("unknown")
+        plist_new_string("mac")
 #endif
     );
     plist_dict_set_item(_pReq, "@VersionInfo", plist_new_string(TSS_CLIENT_VERSION_STRING));
@@ -228,6 +224,23 @@ void TssRequest::setRandomSEPNonce(){
 
 void TssRequest::setBbGoldCertId(uint64_t bbgoldcertid){
     plist_dict_set_item(_pReq, "BbGoldCertId", plist_new_uint(bbgoldcertid));
+
+    //BbChipID 0x68 firmwares carry PSI and PSI2 digests, TSS accepts only the one matching the cert id (see libtatsu tss_request_add_baseband_tags)
+    plist_t pBbChipID = plist_dict_get_item(_pReq, "BbChipID");
+    plist_t pBBFW = plist_dict_get_item(_pReq, "BasebandFirmware");
+    if (pBbChipID && pBBFW && plist_get_node_type(pBbChipID) == PLIST_UINT) {
+        uint64_t bbChipID = 0;
+        plist_get_uint_val(pBbChipID, &bbChipID);
+        if (bbChipID == 0x68) {
+            if (bbgoldcertid == 0x26F3FACC || bbgoldcertid == 0x5CF2EC4E || bbgoldcertid == 0x8399785A) {
+                plist_dict_remove_item(pBBFW, "PSI2-PartialDigest");
+                plist_dict_remove_item(pBBFW, "RestorePSI2-PartialDigest");
+            }else{
+                plist_dict_remove_item(pBBFW, "PSI-PartialDigest");
+                plist_dict_remove_item(pBBFW, "RestorePSI-PartialDigest");
+            }
+        }
+    }
 }
 
 void TssRequest::setBbGoldCertIdForDevice(const char *productType){
@@ -334,7 +347,7 @@ uint64_t TssRequest::getECID() const{
     {
         uint64_t ret = 0;
         plist_get_uint_val(pVal, &ret);
-        return (uint32_t)ret;
+        return ret;
     }
 }
 
@@ -429,8 +442,10 @@ void TssRequest::addDefaultAPTagsToRequest(bool skipOptional){
     });
     
     if (!skipOptional) {
-        if (plist_t wantsLove = plist_dict_get_item(pIdentity, "Ap,OSLongVersion")) {
-            plist_dict_set_item(_pReq, "Ap,OSLongVersion", plist_copy(wantsLove));
+        for (const char *k : {"Ap,OSLongVersion", "Ap,OSReleaseType", "Ap,ProductMarketingVersion", "Ap,ProductType", "Ap,SDKPlatform", "Ap,Target", "Ap,TargetType", "Ap,Timestamp"}) {
+            if (plist_t v = plist_dict_get_item(pIdentity, k)) {
+                plist_dict_set_item(_pReq, k, plist_copy(v));
+            }
         }
     }
     
@@ -460,6 +475,19 @@ void TssRequest::addAllAPComponentsToRequest(bool skipNoniBootComponents){
     retassure(pManifest = plist_dict_get_item(pIdentity, "Manifest"), "Failed to get Manifest");
     bool isImg4 = plist_dict_get_item(_pReq, "@ApImg4Ticket");
     iterateOverPlistElementsInDict(pManifest, [&](const char *key, plist_t e)->void*{
+        //components which are never part of the AP request (see libtatsu tss_request_add_ap_tags)
+        if (strcmp(key, "BasebandFirmware") == 0 || strcmp(key, "SE,UpdatePayload") == 0 || strcmp(key, "BaseSystem") == 0
+            || strcmp(key, "Diags") == 0 || strcmp(key, "Ap,ExclaveOS") == 0) return NULL;
+
+        plist_t pInfo = plist_dict_get_item(e, "Info");
+        bool isTrusted = plist_bool_val_is_true(plist_dict_get_item(e, "Trusted"));
+        //IMG4: only components with RestoreRequestRules or Trusted are requested. Others (Savage, Yonkers, eUICC, ...) make TSS reply with status 94
+        if (isImg4 && !(pInfo && plist_dict_get_item(pInfo, "RestoreRequestRules")) && !isTrusted) {
+            debug("Not adding component '%s' (no RestoreRequestRules and not Trusted)",key);
+            return NULL;
+        }
+        if (pInfo && plist_bool_val_is_true(plist_dict_get_item(pInfo, "IsFTAB"))) return NULL;
+
         //add element to request
         plist_t pKey = NULL;
         cleanup([&]{
@@ -472,17 +500,17 @@ void TssRequest::addAllAPComponentsToRequest(bool skipNoniBootComponents){
             return NULL;
         });
 
-        if (plist_t pInfo = plist_dict_get_item(e, "Info")) {
+        if (pInfo) {
             if (plist_t pRestoreRules = plist_dict_get_item(pInfo, "RestoreRequestRules")) {
                 applyRestoreRulesForManifestComponent(pKey, pRestoreRules, _pReq);
             }
         }
-        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest") || plist_bool_val_is_true(plist_dict_get_item(pKey, "Trusted"));
-        if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) == 0) addComponent = !skipNoniBootComponents;
-        else if (strncmp(key, "Savage", sizeof("Savage")-1) == 0) addComponent = !skipNoniBootComponents;
-        else if (strncmp(key, "Cryptex", sizeof("Cryptex")-1) == 0) addComponent = !skipNoniBootComponents;
-        else if (strncmp(key, "BMU", sizeof("BMU")-1) == 0) addComponent = !skipNoniBootComponents;
-        else if (strncmp(key, "eUICC", sizeof("eUICC")-1) == 0) addComponent = !skipNoniBootComponents;
+        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest") || isTrusted;
+        if (skipNoniBootComponents) {
+            for (const char *prefix : {"Yonkers", "Savage", "Cryptex", "BMU", "eUICC"}) {
+                if (strncmp(key, prefix, strlen(prefix)) == 0) addComponent = false;
+            }
+        }
 
         if (addComponent) {
             debug("Adding component '%s'",key);
@@ -502,7 +530,13 @@ void TssRequest::addBasebandComponentsToRequest(){
     info("Adding Baseband components to request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
     copyKeyFromPlist(_pReq, plist_dict_get_item(pIdentity, "Manifest"), "BasebandFirmware");
     iterateOverPlistElementsInDict(pIdentity, [&](const char *key, plist_t e)->void*{
-        if (strncmp(key, "Bb", 2) == 0) copyKeyFromPlist(_pReq, pIdentity, key);
+        if (strncmp(key, "Bb", 2) != 0) return NULL;
+        if (strcmp(key, "BbChipID") == 0 && plist_get_node_type(e) == PLIST_STRING) {
+            //TSS expects BbChipID as integer, BuildManifest stores it as hex string
+            plist_dict_set_item(_pReq, key, plist_new_uint(getNumberFromStringElementInDict(pIdentity, key)));
+        }else{
+            copyKeyFromPlist(_pReq, pIdentity, key);
+        }
         return NULL;
     });
 }
