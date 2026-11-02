@@ -1,69 +1,93 @@
-# tsschecker - Agent Notes
+# tsschecker Claude Instructions
 
-## iOS 27+ Status 94 Fix (November 2026)
+## Mission
+tsschecker asks Apple's TSS server (`gs.apple.com`) whether a firmware is signed for a device and can save the
+returned tickets (`.shsh2` blobs) for later restores. This is Cole's fork (`origin` = coleleavitt/tsschecker,
+`upstream` = tihmstar/tsschecker), branch `fix-tss-ios27-status94`.
 
-### Problem
-tsschecker returned Status 94 ("device not eligible") for ALL devices on iOS 27.x, even though firmware was signed.
+What must be preserved:
+- **Requests must match what libtatsu sends** (libimobiledevice/libtatsu `src/tss.c`, used by idevicerestore).
+  TSS rejects requests that differ (status 69, 94, 133 and 161 all came from differences), and a ticket built from
+  a different request may not match what a restore asks for.
+- A saved blob has to be usable later, so the request fields that end up in the ticket matter even when TSS returns
+  status 0 without them.
 
-### Root Cause
-The TSS request included `Savage,*`, `Yonkers,*`, `BMU,*`, `eUICC,*`, and `SE,*` components for IMG4 requests. Apple's TSS server rejects requests containing Savage components.
+## Architecture First
+Layers, top to bottom. Each layer only calls the ones below it.
 
-`libtatsu` (used by `idevicerestore`) only includes components that have `RestoreRequestRules` or are `Trusted`. tsschecker was including everything.
+| layer | files | owns |
+|---|---|---|
+| CLI | `tsschecker/main.cpp` | option parsing, device resolution, choosing firmware, printing, saving blobs |
+| request builder + transport | `tsschecker/TssRequest.cpp`, `include/tsschecker/TssRequest.hpp` | build the TSS plist from a BuildManifest identity, send it, parse the reply |
+| firmware lists | `tsschecker/FirmwareAPI.cpp` (selection, cache dir), `tsschecker/FirmwareAPI_IPSWME.cpp` (ipsw.me v4 API) | which IPSW/OTA exists for a device and its URL |
+| helpers + device database | `tsschecker/tsschecker.cpp` | parsing, downloads (curl, libfragmentzip), libirecovery lookups, baseband table `bbdevices[]`, nonce type per CPID, plist iteration |
+| errors | `tsschecker/TSSException.cpp`, `include/tsschecker/TSSException.hpp` | exception types the CLI catches |
 
-### The Fix (PR #180)
-Key change in `TssRequest.cpp`:
-```cpp
-// IMG4: only components with RestoreRequestRules or Trusted are requested
-// Others (Savage, Yonkers, eUICC, ...) make TSS reply with status 94
-if (isImg4 && !(pInfo && plist_dict_get_item(pInfo, "RestoreRequestRules")) && !isTrusted) {
-    return NULL;  // Skip this component
-}
-```
+External libraries: libgeneral (`retassure`/`cleanup`/`info` macros, `Mem`, `readFile`/`writeFile`), libplist
+(>= 2.3), libirecovery (device database), libfragmentzip (reads `BuildManifest.plist` out of a remote zip), curl,
+openssl, and the `external/jssy` submodule (JSON tokenizer).
 
-### Additional Fixes
-- **Baseband PSI/PSI2**: Select based on `BbGoldCertId` (fixes Status 133)
-- **ECID truncation**: Was `(uint32_t)ret`, now full `uint64_t`
-- **BbChipID format**: Send as integer, not hex string
-- **Path handling**: Was appending `'\n'` instead of `'/'`
-- **Ap,* fields**: Added missing identity fields
-- **Version string**: Updated to `libauthinstall-1104.0.9`
-- **HostPlatformInfo**: "mac" on Linux (matches libtatsu)
+Rules for where code goes:
+- Request content (which keys, which components, restore rules) lives in `TssRequest`. `main.cpp` only calls the
+  `add*`/`set*` methods in order: `setDeviceVals` → `setEcid` → `addDefaultAPTagsToRequest` →
+  `addAllAPComponentsToRequest` → nonces → baseband. `addAllAPComponentsToRequest` reads `@ApImg4Ticket`, so the
+  AP tags must come first.
+- Device facts that libirecovery does not have (baseband gold cert id and SNUM length) live in `bbdevices[]` in
+  `tsschecker.cpp`, synced with 1Conan/tsschecker.
+- Firmware list sources implement `FirmwareAPI`. Version/build selection is in the base class
+  (`FirmwareAPI::getURLForDeviceAndBuild`); a source only lists firmwares.
 
-### Follow-up fixes (audit against libtatsu)
-- `Ap,SikaFuse=0` with `UID_MODE` for `RequiresUIDMode` devices (A18+): without it TSS answers Status 69
-- `NeRDEpoch`, `PearlCertificationRootPub`, `AllowNeRDBoot`, `PermitNeRDPivot` copied like libtatsu (ticket gets nrde/pcrp/pndp)
-- `@BBTicket` requested, so the response contains a BBTicket; `BasebandFirmware` sent without `Info`
-- Baseband keys removed when the baseband part can't be built (partial baseband request = Status 161)
-- Baseband table synced with 1Conan/tsschecker (iPhone 12-17, iPads, Watches, Macs)
-- Restore rules: unknown conditions warn and fail the rule instead of aborting; only bool actions applied
-- Components without RestoreRequestRules get EPRO/ESEC; components without Info are skipped
-- ProductType stored in the request; unknown devices give errors instead of segfaults
-- `-s <path>`, `-v`, `--bbsnum` work; cache in `$XDG_CACHE_HOME`/`~/.cache/tsschecker/`
+## Current State
+- Status 94 fix (`ccc1beb`): IMG4 requests only carry components that have `RestoreRequestRules` or are `Trusted`
+  (Savage, Yonkers, BMU, eUICC, SE made TSS answer 94). Also PSI/PSI2 choice by `BbGoldCertId` (status 133),
+  `BbChipID` as integer, full 64-bit ECID, `Ap,*` identity fields, `libauthinstall-1104.0.9`, `@HostPlatformInfo=mac`.
+- Audit follow-up (`f8e854b`): `Ap,SikaFuse=0` with `UID_MODE` for `RequiresUIDMode` devices (A18+, status 69
+  without it), NeRD/Pearl fields, `@BBTicket`, baseband keys removed when the baseband part fails (status 161),
+  updated baseband table, libtatsu restore-rule semantics, no NULL product type crashes, CLI fixes
+  (`-s <path>`, `-v`, `--bbsnum`), cache in `$XDG_CACHE_HOME`/`~/.cache/tsschecker/`.
+- Firmware lists use the ipsw.me v4 API (`/v4/devices`, `/v4/device/<id>?type=ipsw|ota`). The v2.1
+  `ota.json` endpoint returns `null`. OTA lists skip betas unless `--beta`, prefer full OTAs over deltas, and drop
+  the `9.9.` version prefix of full OTAs.
+- Verified live: iPhone12,5 (27.0.1, 27.2, OTA 27.2) and iPhone17,1 (27.2) return status 0 with `ApImg4Ticket` and
+  `BBTicket`; AP components match libtatsu (`.claude/skills/tss-parity`).
+- Known gaps: Yonkers/Savage/SE/Rose/Cryptex tickets (separate requests in libtatsu) are not implemented
+  (`addYonkersComponentsToRequest` is a stub). iOS 4 without APTickets is a TODO. ipsw.me's `/v4/devices` has no
+  Watch6+ entries (they have no IPSWs), so `--list-devices` doesn't show them, and it has no OTA entries for some new devices (iPhone17,1 gives "no firmwares found" with `-o`). SSL verification is off for TSS, as in
+  libtatsu.
 
-### Known limitation
-`-o` (OTA) is broken: `https://api.ipsw.me/v2.1/ota.json/condensed` answers `null`. Use `-m` with an OTA BuildManifest.
+## Working Rules
+- C++17, clang. Use the libgeneral macros already used in the file: `retassure`, `retcustomassure`,
+  `retassureMissingValue` (baseband code relies on `TSSException_missingValue` key names), `cleanup`, `safeFree`.
+- Compare against libtatsu `src/tss.c` before changing request content, and cite the function in a comment when a
+  rule comes from there.
+- Don't add fields "just in case": every request key must come from libtatsu or a verified TSS reply.
+- Never send real device identifiers from the user's devices unless asked. Use `-e 0x1210ce2208802e` or a random
+  ECID for tests.
+- Keep commits small. Don't push or open upstream PRs without being asked. This file, `AGENTS.md` and `.claude/` are
+  fork-only and should be dropped from an upstream PR.
 
-### Testing
-```bash
-export LD_LIBRARY_PATH="/usr/local/lib:$LD_LIBRARY_PATH"
-./tsschecker -d iPhone12,5 -B d431ap -e 0x001210ce2208802e -l -s ~/shsh_blobs/
-./tsschecker -d iPhone17,1 -e 0x001210ce2208802e -l -s ~/shsh_blobs/
-# Status: 0 (SUCCESS), response has ApImg4Ticket and BBTicket
-```
-
-### Build Dependencies
-- libgeneral
-- libfragmentzip  
-- libirecovery
-- libplist (>= 2.3)
-- curl
-- openssl
-
-### Build
-```bash
-git submodule update --init   # external/jssy
-./autogen.sh
-./configure
+## Validation
+Build (the libs live in `/usr/local`):
+```sh
+git submodule update --init                     # external/jssy
+PKG_CONFIG_PATH=/usr/local/lib/pkgconfig ./autogen.sh
 make -j$(nproc)
-sudo make install
 ```
+Run the built binary (libtool wrapper):
+```sh
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+./tsschecker/tsschecker -d iPhone12,5 -l -e 0x1210ce2208802e            # restore, latest
+./tsschecker/tsschecker -d iPhone17,1 -l -e 0x1210ce2208802e -s .         # A18: SikaFuse + baseband
+./tsschecker/tsschecker -o -d iPhone12,5 -l -e 0x1210ce2208802e          # OTA
+./tsschecker/tsschecker -d iPhone12,5 -m BuildManifest.plist --print-tss-request > req.txt
+python3 .claude/skills/tss-parity/scripts/compare_ap.py BuildManifest.plist req.txt
+```
+Expected: `Status: 0 (SUCCESS)` and `IS signed!`; with `-s`, the `.shsh2` contains `ApImg4Ticket` and `BBTicket`.
+Status codes: 69/94 not eligible (often a request difference), 133 baseband PSI mismatch, 161 malformed request.
+There are no unit tests; validation is a build plus live TSS requests.
+
+## Project Claude Layout
+- `AGENTS.md`: the same rules for agents that don't read this file. Keep the two consistent.
+- `MEMORY.md`: local state and handoff notes (not committed).
+- `.claude/` (not committed): `rules/` (code style, security, testing), `agents/` (researcher, verifier),
+  `commands/` (`/audit`, `/repro`), `skills/tss-parity/` (libtatsu comparison script).
