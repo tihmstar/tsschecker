@@ -9,25 +9,29 @@
 #define FirmwareAPI_IPSWME_hpp
 
 #include <tsschecker/FirmwareAPI.hpp>
-#include <libgeneral/Mem.hpp>
 #include <stdint.h>
 #include <vector>
 #include <map>
+#include <memory>
+#include <string>
 
 struct jssytok;
 namespace tihmstar{
 namespace tsschecker {
+//firmware lists from the ipsw.me v4 API (https://api.ipsw.me/v4/)
 class FirmwareAPI_IPSWME : public FirmwareAPI {
+    struct JsonDoc;
     bool _ota;
-    jssytok *_tokens;
+    bool _beta;
+    bool _readCache;
 
-    tihmstar::Mem _buf;
+    std::map<std::string,std::unique_ptr<JsonDoc>> _responses; //API endpoint -> parsed response
     std::vector<std::string> _devicesCache;
     std::map<std::string,std::vector<firmwareVersion>> _versionsCache;
 
-    void parse(tihmstar::Mem buf);
+    const jssytok *fetch(const std::string &endpoint);
 public:
-    FirmwareAPI_IPSWME(bool ota = false);
+    FirmwareAPI_IPSWME(bool ota = false, bool beta = false);
     virtual ~FirmwareAPI_IPSWME() override;
     
     virtual void load() override;
@@ -36,7 +40,6 @@ public:
     
     virtual std::vector<std::string> listDevices() override;
     virtual std::vector<firmwareVersion> listVersionsForDevice(std::string device) override;
-    virtual firmwareVersion getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version = "", std::string build = "") override;
 };
 };
 };

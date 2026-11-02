@@ -480,6 +480,7 @@ tihmstar::Mem tsschecker::downloadFile(const char *url){
     
     curl_easy_setopt(mcurl, CURLOPT_URL, url);
     curl_easy_setopt(mcurl, CURLOPT_TIMEOUT, 20L); //20 sec
+    curl_easy_setopt(mcurl, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(mcurl, CURLOPT_WRITEFUNCTION, (size_t (*)(void *, size_t, size_t, void *))[](void *contents, size_t size, size_t nmemb, void *userp)->size_t{
         uint8_t *ptr = (uint8_t*)contents;
         size_t realsize = size * nmemb;
@@ -489,7 +490,7 @@ tihmstar::Mem tsschecker::downloadFile(const char *url){
     });
     curl_easy_setopt(mcurl, CURLOPT_WRITEDATA, (void *)&ret);
     
-    retassure((res = curl_easy_perform(mcurl)) == CURLE_OK, "curl failed with error=%d",res);
+    retassure((res = curl_easy_perform(mcurl)) == CURLE_OK, "Downloading '%s' failed: %s",url,curl_easy_strerror(res));
     return ret;
 }
 

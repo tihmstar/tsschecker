@@ -29,9 +29,10 @@ public:
 
     virtual std::vector<std::string> listDevices() = 0;
     virtual std::vector<firmwareVersion> listVersionsForDevice(std::string device) = 0;
-    virtual firmwareVersion getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version = "", std::string build = "") = 0;
-    
+
+    //empty version and build select the newest firmware
     firmwareVersion getURLForDeviceAndBuild(std::string device, std::string version = "", std::string build = "");
+    firmwareVersion getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version = "", std::string build = "");
     firmwareVersion getURLForBoardAndBuild(std::string board, std::string version = "", std::string build = "");
 };
 };

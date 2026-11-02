@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
+#include <strings.h>
 
 using namespace tihmstar::tsschecker;
 
@@ -56,9 +57,23 @@ std::string FirmwareAPI::getCachePath(){
 
 #pragma mark public
 FirmwareAPI::firmwareVersion FirmwareAPI::getURLForDeviceAndBuild(std::string device, std::string version, std::string build){
-    const char *board = tsschecker::getBoardTypeFromProductType(device.c_str());
-    retcustomassure(TSSException_DBLookupFailed, board, "Failed to get boardtype for '%s'",device.c_str());
-    return getURLForBoardAndBuild(board, version, build);
+    auto firmwares = listVersionsForDevice(device);
+    retassure(firmwares.size(), "no firmwares found for device '%s'",device.c_str());
+    if (!build.size() && !version.size()) return firmwares.front();
+    for (auto &f : firmwares) {
+        if (build.size()) {
+            if (strcasecmp(f.build.c_str(), build.c_str()) == 0) return f;
+        }else if (f.version == version) {
+            return f;
+        }
+    }
+    reterror("Failed to find firmware '%s' '%s' for device '%s'",version.c_str(),build.c_str(),device.c_str());
+}
+
+FirmwareAPI::firmwareVersion FirmwareAPI::getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version, std::string build){
+    const char *productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
+    retcustomassure(TSSException_DBLookupFailed, productType, "Unknown device CPID:0x%x BDID:0x%x",cpid,bdid);
+    return getURLForDeviceAndBuild(std::string(productType), version, build);
 }
 
 FirmwareAPI::firmwareVersion FirmwareAPI::getURLForBoardAndBuild(std::string board, std::string version, std::string build){

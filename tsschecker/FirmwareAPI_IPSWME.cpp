@@ -9,9 +9,8 @@
 #include <tsschecker/tsschecker.hpp>
 
 #include <libgeneral/macros.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
+#include <libgeneral/Mem.hpp>
+#include <libgeneral/Utils.hpp>
 #include <algorithm>
 #include <ctype.h>
 #include <string.h>
@@ -23,80 +22,91 @@ extern "C"{
 
 using namespace tihmstar::tsschecker;
 
-#define FIRMWARE_JSON_URL "https://api.ipsw.me/v2.1/firmwares.json/condensed"
-#define FIRMWARE_OTA_JSON_URL "https://api.ipsw.me/v2.1/ota.json/condensed"
+#define IPSWME_API_URL "https://api.ipsw.me/v4/"
 
-FirmwareAPI_IPSWME::FirmwareAPI_IPSWME(bool ota)
-: _ota(ota), _tokens(NULL)
+struct FirmwareAPI_IPSWME::JsonDoc{
+    tihmstar::Mem buf;
+    std::vector<jssytok_t> tokens; //tokens point into buf
+
+    JsonDoc(tihmstar::Mem data) : buf(std::move(data)){
+        long tokencnt = 0;
+        retassure((tokencnt = jssy_parse((const char*)buf.data(), buf.size(), NULL, 0)) > 1, "Failed to parse json");
+        tokens.resize(tokencnt);
+        retassure(jssy_parse((const char*)buf.data(), buf.size(), tokens.data(), tokens.size() * sizeof(jssytok_t)) > 1, "Failed to parse json");
+    }
+};
+
+static std::string jsonString(const jssytok_t *t){
+    if (!t || t->type != JSSY_STRING) return {};
+    return {t->value, t->value + t->size};
+}
+
+static std::string cacheFileNameForEndpoint(std::string endpoint){
+    for (auto &c : endpoint) {
+        if (!isalnum((unsigned char)c) && c != '.' && c != '-') c = '_';
+    }
+    return endpoint + ".json";
+}
+
+FirmwareAPI_IPSWME::FirmwareAPI_IPSWME(bool ota, bool beta)
+: _ota(ota), _beta(beta), _readCache(false)
 {
     
 }
 
 FirmwareAPI_IPSWME::~FirmwareAPI_IPSWME(){
-    safeFree(_tokens);
+    //
+}
+
+#pragma mark private
+const jssytok_t *FirmwareAPI_IPSWME::fetch(const std::string &endpoint){
+    auto &doc = _responses[endpoint];
+    if (!doc) {
+        tihmstar::Mem buf;
+        bool fromCache = false;
+        if (_readCache) {
+            auto cachepath = getCachePath() + cacheFileNameForEndpoint(endpoint);
+            try {
+                buf = tihmstar::readFile(cachepath.c_str());
+                fromCache = true;
+                debug("Using cached '%s'",cachepath.c_str());
+            } catch (tihmstar::exception &e) {
+                debug("No cache for '%s'",endpoint.c_str());
+            }
+        }
+        if (!fromCache) buf = tsschecker::downloadFile((IPSWME_API_URL + endpoint).c_str());
+        doc = std::make_unique<JsonDoc>(std::move(buf));
+    }
+    return doc->tokens.data();
 }
 
 #pragma mark public
-
-void FirmwareAPI_IPSWME::parse(tihmstar::Mem buf){
-    jssytok_t *tokens = NULL;
-    cleanup([&]{
-        safeFree(tokens);
-    });
-    long tokencnt = 0;
-    //a dead endpoint answers "null", which parses as a single token
-    retassure((tokencnt = jssy_parse((const char*)buf.data(), buf.size(), NULL, 0)) > 1, "Failed to parse json");
-    tokens = (jssytok_t*)calloc(1, tokencnt * sizeof(jssytok_t));
-    retassure(jssy_parse((const char*)buf.data(), buf.size(), tokens, tokencnt * sizeof(jssytok_t)) > 1, "Failed to parse json");
-
-    safeFree(_tokens);
-    _tokens = tokens; tokens = NULL;
-    _buf = std::move(buf);
-    _devicesCache.clear();
-    _versionsCache.clear();
-}
-
 void FirmwareAPI_IPSWME::load(){
-    parse(tsschecker::downloadFile(_ota ? FIRMWARE_OTA_JSON_URL : FIRMWARE_JSON_URL));
+    fetch("devices");
 }
 
 void FirmwareAPI_IPSWME::loadcache(){
-    int fd = -1;
-    cleanup([&]{
-        safeClose(fd);
-    });
-    struct stat st = {};
-
-    auto cachepath = getCachePath() + (_ota ? "ota.json" : "firmwares.json");
-    retassure((fd = open(cachepath.c_str(), O_RDONLY)) >= 0, "Failed to read file '%s'",cachepath.c_str());
-    retassure(!fstat(fd, &st), "Failed to stat file");
-    tihmstar::Mem buf(st.st_size);
-    retassure(read(fd, buf.data(), buf.size()) == buf.size(), "Failed to read from file");
-    parse(std::move(buf));
+    _readCache = true;
+    fetch("devices");
 }
 
 void FirmwareAPI_IPSWME::storecache(){
-    int fd = -1;
-    cleanup([&]{
-        safeClose(fd);
-    });
-    retassure(_tokens, "No firmware list loaded, not storing cache");
-    auto cachepath = getCachePath() + (_ota ? "ota.json" : "firmwares.json");
-    debug("Storing cache at %s",cachepath.c_str());
-    retassure((fd = open(cachepath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0600)) >= 0, "Failed to create file '%s'",cachepath.c_str());
-    retassure(write(fd, _buf.data(), _buf.size()) == _buf.size(), "Failed to write to file");
+    for (auto &r : _responses) {
+        if (!r.second) continue;
+        auto cachepath = getCachePath() + cacheFileNameForEndpoint(r.first);
+        debug("Storing cache at %s",cachepath.c_str());
+        tihmstar::writeFile(cachepath.c_str(), r.second->buf.data(), r.second->buf.size());
+    }
 }
 
 std::vector<std::string> FirmwareAPI_IPSWME::listDevices(){
     if (_devicesCache.size() == 0) {
-        jssytok_t *devs = NULL;
-        retassure(devs = jssy_dictGetValueForKey(_tokens, "devices"), "Failed to get devices key");
-        {
-            retassure(devs->type == JSSY_DICT || devs->type == JSSY_ARRAY, "devices not DICT or ARRAY");
-            size_t i=0;
-            for (jssytok_t *t=devs->subval; i<devs->size; t=t->next,i++) {
-                _devicesCache.push_back({t->value,t->value+t->size});
-            }
+        const jssytok_t *devs = fetch("devices");
+        retassure(devs->type == JSSY_ARRAY, "devices not ARRAY");
+        size_t i=0;
+        for (jssytok_t *t=devs->subval; i<devs->size; t=t->next,i++) {
+            auto identifier = jsonString(jssy_dictGetValueForKey(t, "identifier"));
+            if (identifier.size()) _devicesCache.push_back(identifier);
         }
         std::sort(_devicesCache.begin(), _devicesCache.end(), [](const auto &a, const auto &b)->int{
             const char *aa = a.c_str();
@@ -117,45 +127,40 @@ std::vector<std::string> FirmwareAPI_IPSWME::listDevices(){
                 return na > nb;
             }
         });
-        _versionsCache.clear();
     }
     return _devicesCache;
 }
 
 std::vector<FirmwareAPI::firmwareVersion> FirmwareAPI_IPSWME::listVersionsForDevice(std::string device){
     if (_versionsCache.find(device) == _versionsCache.end()) {
-        std::vector<firmwareVersion> ret;
-        jssytok_t *devs = NULL;
-        if (!(devs = jssy_dictGetValueForKey(_tokens, "devices"))){
-            debug("Failed to get devices key. Assuming this is ota.json and using root as fallback");
-            devs = _tokens;
-        }
-        {
-            retassure(devs->type == JSSY_DICT || devs->type == JSSY_ARRAY, "devices not DICT or ARRAY");
-            size_t i=0;
-            for (jssytok_t *t=devs->subval; i<devs->size; t=t->next,i++) {
-                if (device == std::string{t->value,t->value+t->size}) {
-                    jssytok_t *firmwares = NULL;
-                    retassure(firmwares = jssy_dictGetValueForKey(t->subval, "firmwares"), "Failed to get firmwares key");
-                    retassure(firmwares->type == JSSY_ARRAY, "firmwares not ARRAY");
-                    size_t j=0;
-                    for (jssytok_t *tt=firmwares->subval; j<firmwares->size; tt=tt->next,j++) {
-                        jssytok_t *buildid = NULL;
-                        jssytok_t *version = NULL;
-                        jssytok_t *url = NULL;
-                        retassure(buildid = jssy_dictGetValueForKey(tt, "buildid"), "Failed to get buildid key");
-                        retassure(version = jssy_dictGetValueForKey(tt, "version"), "Failed to get version key");
-                        retassure(url = jssy_dictGetValueForKey(tt, "url"), "Failed to get version key");
-                        ret.push_back({
-                            .version = std::string{version->value,version->value+version->size},
-                            .build = std::string{buildid->value,buildid->value+buildid->size},
-                            .url = std::string{url->value,url->value+url->size},
-                        });
-                    }
-                    break;
-                }
+        std::vector<firmwareVersion> fulls;
+        std::vector<firmwareVersion> deltas;
+        const jssytok_t *dev = fetch("device/" + device + (_ota ? "?type=ota" : "?type=ipsw"));
+        if (jssytok_t *firmwares = jssy_dictGetValueForKey(dev, "firmwares")) {
+            retassure(firmwares->type == JSSY_ARRAY, "firmwares not ARRAY");
+            size_t j=0;
+            for (jssytok_t *tt=firmwares->subval; j<firmwares->size; tt=tt->next,j++) {
+                firmwareVersion f = {
+                    .version = jsonString(jssy_dictGetValueForKey(tt, "version")),
+                    .build = jsonString(jssy_dictGetValueForKey(tt, "buildid")),
+                    .url = jsonString(jssy_dictGetValueForKey(tt, "url")),
+                };
+                if (!f.version.size() || !f.build.size() || !f.url.size()) continue;
+                if (!_beta && jsonString(jssy_dictGetValueForKey(tt, "releasetype")) == "Beta") continue;
+                //full OTAs list their version as 9.9.<version>
+                if (_ota && f.version.rfind("9.9.", 0) == 0) f.version = f.version.substr(4);
+                if (jsonString(jssy_dictGetValueForKey(tt, "prerequisitebuildid")).size()) deltas.push_back(f);
+                else fulls.push_back(f);
             }
         }
+        //one entry per build, full OTAs before deltas
+        std::vector<firmwareVersion> ret;
+        for (auto list : {&fulls, &deltas}) {
+            for (auto &f : *list) {
+                if (std::none_of(ret.begin(), ret.end(), [&](const firmwareVersion &r){return r.build == f.build;})) ret.push_back(f);
+            }
+        }
+
         std::sort(ret.begin(), ret.end(),[](const auto &a, const auto &b)->int{
             const char *aa = a.build.c_str();
             const char *bb = b.build.c_str();
@@ -187,22 +192,3 @@ std::vector<FirmwareAPI::firmwareVersion> FirmwareAPI_IPSWME::listVersionsForDev
 }
 
 
-FirmwareAPI::firmwareVersion FirmwareAPI_IPSWME::getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version, std::string build){
-    const char *productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
-    retassure(productType, "Unknown device CPID:0x%x BDID:0x%x",cpid,bdid);
-    std::string device = productType;
-    auto firmwares = listVersionsForDevice(device);
-    retassure(firmwares.size(), "no firmwares found for device '%s'",device.c_str());
-    if (build.size() || version.size()) {
-        for (auto f : firmwares) {
-            if (build.size()) {
-                if (strcasecmp(f.build.c_str(), build.c_str()) == 0) return f;
-            }else if (f.version == version) {
-                return f;
-            }
-        }
-        reterror("Failed to find firmware '%s' '%s'",version.c_str(),build.c_str());
-    }else{
-        return firmwares.front();
-    }
-}

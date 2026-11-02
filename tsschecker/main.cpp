@@ -60,6 +60,7 @@ static struct option longopts[] = {
     /* Long opts */
     { "bbsnum",             required_argument, NULL,  0  },
     { "bdid",               required_argument, NULL,  0  },
+    { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
     { "cpid",               required_argument, NULL,  0  },
 
@@ -104,6 +105,7 @@ void cmd_help(){
     /* Long opts */
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
     printf("      --bdid <bdid> Manually specify bdid\n");
+    printf("      --beta\t\t\tinclude beta firmwares in firmware lists (OTA only, use with -o)\n");
     printf("  -c, --cache\t\t\tCache requests to firmware api (-c -c or --cache=2 only stores the cache)\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
     printf("      --cpid <cpid> Manually specify cpid\n");
@@ -111,6 +113,7 @@ void cmd_help(){
     /* Info & Listing */
     printf("      --list-devices\t\tlist all known devices\n");
     printf("      --list-versions\t\tlist all known firmware versions\n");
+    printf("      --list-builds\t\tlist all known firmware builds\n");
 
     /* Debugging */
     printf("      --print-tss-request\tprint TSS request that will be sent to Apple\n");
@@ -128,6 +131,7 @@ int main_r(int argc, const char * argv[]) {
     int optindex = 0;
     
     bool isOta = false;
+    bool includeBeta = false;
     CacheSelector useCache = kNoCache;
     
     bool doListDevices = false;
@@ -176,6 +180,8 @@ int main_r(int argc, const char * argv[]) {
                     whitelistComponents.push_back(components);
                 }else if (curopt == "bbsnum") {
                     bbsnum = optarg;
+                }else if (curopt == "beta") {
+                    includeBeta = true;
                 }else if (curopt == "bdid") {
                     bdid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "cpid") {
@@ -325,7 +331,7 @@ int main_r(int argc, const char * argv[]) {
         safeDelete(fapi);
     });
     if (!buildManifestPath) {
-        fapi = new FirmwareAPI_IPSWME(isOta);
+        fapi = new FirmwareAPI_IPSWME(isOta, includeBeta);
         {
             //load firmwares
             bool isLoaded = false;
@@ -406,10 +412,10 @@ int main_r(int argc, const char * argv[]) {
                 error("Please specify a firmware version or BuildID for this option");
                 return -1;
             }
-            if (boardType){
+            if (productType){
+                fvers = fapi->getURLForDeviceAndBuild(std::string(productType), versionNumber, buildNumber);
+            } else {
                 fvers = fapi->getURLForBoardAndBuild(boardType, versionNumber, buildNumber);
-            } else if (productType) {
-                fvers = fapi->getURLForDeviceAndBuild(productType, versionNumber, buildNumber);
             }
             info("Got Firmware %s %s %s\n",fvers.version.c_str(),fvers.build.c_str(),fvers.url.c_str());
             p_BuildManifest = getBuildManifestFromUrl(fvers.url.c_str());
