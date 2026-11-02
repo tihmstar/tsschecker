@@ -28,11 +28,15 @@ class TssRequest{
     plist_t _pReq;
 
     std::string _variant;
+    std::string _productType;
     uint64_t _generator;
     
     void setStandardValues();
+    plist_t createRequestEntryForManifestComponent(plist_t pComponent);
 public:
     TssRequest(const plist_t pBuildManifest, std::string variant = "", bool isBuildIdentity = false);
+    TssRequest(const TssRequest &) = delete;
+    TssRequest &operator=(const TssRequest &) = delete;
     ~TssRequest();
     
     plist_t getTSSResponce();

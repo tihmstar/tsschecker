@@ -24,6 +24,8 @@ class FirmwareAPI_IPSWME : public FirmwareAPI {
     tihmstar::Mem _buf;
     std::vector<std::string> _devicesCache;
     std::map<std::string,std::vector<firmwareVersion>> _versionsCache;
+
+    void parse(tihmstar::Mem buf);
 public:
     FirmwareAPI_IPSWME(bool ota = false);
     virtual ~FirmwareAPI_IPSWME() override;

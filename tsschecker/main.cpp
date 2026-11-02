@@ -14,8 +14,9 @@
 #include <libgeneral/Utils.hpp>
 
 #include <getopt.h>
-#include <time.h>
 #include <string.h>
+#include <random>
+#include <algorithm>
 
 
 
@@ -53,14 +54,12 @@ static struct option longopts[] = {
     { "sepnonce",           required_argument, NULL, 'S' },
     { "update-install",     optional_argument, NULL, 'u' },
     { "buildid",            required_argument, NULL, 'Z' },
-    { "buildid",            required_argument, NULL, 'Z' },
     { "variant",            required_argument, NULL, 'V' },
     { "verbose",            no_argument,       NULL, 'v' },
 
     /* Long opts */
     { "bbsnum",             required_argument, NULL,  0  },
     { "bdid",               required_argument, NULL,  0  },
-    { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
     { "cpid",               required_argument, NULL,  0  },
 
@@ -94,18 +93,18 @@ void cmd_help(){
     printf("  -m, --build-manifest\t\tmanually specify buildmanifest (can be used with -d)\n");
     printf("  -N, --apnonce NONCE\t\tmanually specify ApNonce instead of using random one (not required for saving blobs)\n");
     printf("  -o, --ota\t\t\tcheck OTA signing status, instead of normal restore\n");
-    printf("  -s, --save [path]\t\tsave fetched shsh blobs (mostly makes sense with -e)\n");
+    printf("  -s, --save [path]\t\tsave fetched shsh blobs to path (default: current directory, mostly makes sense with -e)\n");
     printf("  -S, --sepnonce <NONCE>\tmanually specify SepNonce instead of using random one (not required for saving blobs)\n");
     printf("  -u, --update-install\t\trequest update ticket instead of erase\n");
     printf("                 \t\tespecially useful with -s and -e for saving signing tickets\n");
+    printf("  -v, --verbose\t\t\tprint TSS request and response\n");
     printf("  -V  --variant <VARIANT>\tspecify restore variant\n");
     printf("  -Z  --buildid <BUILD \t\tspecific buildid instead of firmware version (eg. 13C75)\n");
 
     /* Long opts */
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
     printf("      --bdid <bdid> Manually specify bdid\n");
-    printf("      --beta\t\t\trequest ticket for beta instead of normal release (use with -o)\n");
-    printf("      --cache\t\t\tCache requests to firmware api\n");
+    printf("  -c, --cache\t\t\tCache requests to firmware api (-c -c or --cache=2 only stores the cache)\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
     printf("      --cpid <cpid> Manually specify cpid\n");
 
@@ -148,6 +147,7 @@ int main_r(int argc, const char * argv[]) {
     const char *rawRequestPath = NULL;
     const char *savePath = NULL;
     const char *buildManifestPath = NULL;
+    const char *bbsnum = NULL;
 
     std::string versionNumber;
     std::string buildNumber;
@@ -174,6 +174,8 @@ int main_r(int argc, const char * argv[]) {
                         whitelistComponents.push_back(scomp);
                     }
                     whitelistComponents.push_back(components);
+                }else if (curopt == "bbsnum") {
+                    bbsnum = optarg;
                 }else if (curopt == "bdid") {
                     bdid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "cpid") {
@@ -208,9 +210,9 @@ int main_r(int argc, const char * argv[]) {
                 
             case 'c': //long option "cache"
             {
-                int l_cache = optarg ? atoi(optarg)-1 : (int)useCache;
-                if (++l_cache > kCacheStoreOnly) l_cache = kCacheStoreOnly;
-                useCache = (CacheSelector)l_cache;
+                //-c / --cache=1 loads and stores the cache, -cc / --cache=2 only stores it
+                int l_cache = optarg ? atoi(optarg) : (int)useCache + 1;
+                useCache = (CacheSelector)std::min(std::max(l_cache, (int)kNoCache), (int)kCacheStoreOnly);
             }
                 break;
                 
@@ -252,7 +254,9 @@ int main_r(int argc, const char * argv[]) {
 
             case 's': //long option "save"
                 if (!(savePath = optarg)){
-                    savePath = "./";
+                    //getopt only takes optional arguments attached ("-s<path>"), also accept "-s <path>"
+                    if (optind < argc && argv[optind][0] != '-') savePath = argv[optind++];
+                    else savePath = "./";
                 }
                 break;
 
@@ -260,8 +264,13 @@ int main_r(int argc, const char * argv[]) {
                 restoreVariant = "Customer Upgrade Install";
                 break;
                 
-            case 'V': //long option "sepnonce"
+            case 'V': //long option "variant"
                 restoreVariant = optarg;
+                break;
+
+            case 'v': //long option "verbose"
+                doPrintTssRequest = true;
+                doPrintTssResponse = true;
                 break;
                 
             case 'Z': //long option "buildid"
@@ -342,21 +351,25 @@ int main_r(int argc, const char * argv[]) {
         productType = getProductTypeFromBoardType(boardType);
     }else if (productType && !boardType){
         boardType = getBoardTypeFromProductType(productType);
-        if (!boardType){
-            error("Can't get board type for '%s'. Please manually specify boardtype",productType);
-            return -2;
-        }
     } else if (!productType && !boardType){
         error("No device specified!");
         return -1;
     }
-    if (!cpid) cpid = getCPIDForBoardType(boardType);
-    if (!bdid) bdid = getBDIDForBoardType(boardType);
-    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productType,boardType,cpid,bdid);
+    if (!cpid || !bdid) {
+        if (!boardType){
+            error("Can't get board type for '%s'. Please manually specify boardtype or --cpid and --bdid",productType);
+            return -2;
+        }
+        if (!cpid) cpid = getCPIDForBoardType(boardType);
+        if (!bdid) bdid = getBDIDForBoardType(boardType);
+    }
+    const char *productTypeName = productType ? productType : "(unknown product)";
+    const char *boardTypeName = boardType ? boardType : "(unknown board)";
+    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productTypeName,boardTypeName,cpid,bdid);
     if (!ecid) {
         warning("No ecid specified, generating random ecid!");
-        srand((unsigned)time(NULL));
-        ecid = ((uint64_t)rand() << 32) | rand();
+        //real ECIDs fit in 52 bits
+        ecid = std::mt19937_64{std::random_device{}()}() & 0x000FFFFFFFFFFFFFULL;
     }
     if (fapi && (doListVersions || doListBuilds)){
         if (!productType){
@@ -420,7 +433,7 @@ int main_r(int argc, const char * argv[]) {
             }
 
             if (!apnonce && !generator) {
-                req.setNonceGenerator(*(uint64_t*)"tihmstar");
+                req.setNonceGenerator(0x726174736d686974); //"tihmstar" as little-endian uint64
             }else{
                 if (generator) req.setNonceGenerator(generator);
                 if (apnonce){
@@ -443,15 +456,19 @@ int main_r(int argc, const char * argv[]) {
                 req.addBasebandComponentsToRequest();
                 try {
                     req.setDefaultBbGoldCertId();
-                    req.setRandomSNUM();
+                    if (bbsnum) req.setSNUM(parseHex(bbsnum));
+                    else req.setRandomSNUM();
                 } catch (tihmstar::exception &e) {
-                    error("Failed to construct baseband requste with error:\n%s",e.dumpStr().c_str());
+                    error("Failed to construct baseband request with error:\n%s",e.dumpStr().c_str());
                     if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
                     warning("Skipping requesting baseband ticket due to previous errors");
+                    //a partial baseband request makes TSS fail the whole request (status 161)
+                    req.removeBasebandComponentsFromRequest();
                 }
             } catch (tihmstar::TSSException_missingValue &e) {
-                if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) && requestSelection != kRequestSelectorDefaultBasebandOnly) throw;
-                warning("Skipping requesting baseband ticket, because required basenand values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
+                if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
+                warning("Skipping requesting baseband ticket, because required baseband values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
+                req.removeBasebandComponentsFromRequest();
             }
         }
         
@@ -464,7 +481,7 @@ int main_r(int argc, const char * argv[]) {
         }
         if (rsp) {
             if (doPrintTssResponse) dumpplist(rsp);
-            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productType,boardType);
+            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
             retval = 0;
             
             if (savePath) {
@@ -474,7 +491,7 @@ int main_r(int argc, const char * argv[]) {
             }
             
         }else{
-            info("%s %s for %s %s is NOT signed!",fvers.version.c_str(),fvers.build.c_str(),productType,boardType);
+            info("%s %s for %s %s is NOT signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
             retval = 1;
         }
     }

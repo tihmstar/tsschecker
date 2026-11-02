@@ -10,8 +10,10 @@
 #include <tsschecker/TSSException.hpp>
 #include <libgeneral/macros.h>
 #include <curl/curl.h>
-#include <time.h>
 #include <string.h>
+#include <random>
+#include <thread>
+#include <chrono>
 
 #ifdef HAVE_OPENSSL
 #   include <openssl/sha.h>
@@ -32,25 +34,29 @@ using namespace tihmstar::tsschecker;
 #define TSS_MAX_TRIES 10
 
 #pragma mark helpers
+static std::mt19937_64 &rng(){
+    static std::mt19937_64 gen{std::random_device{}()};
+    return gen;
+}
+
+static void fillRandom(uint8_t *buf, size_t size){
+    for (size_t i=0; i<size; i++) buf[i] = (uint8_t)rng()();
+}
+
 #ifndef NO_GENERATE_GUID
 static char *generate_guid(){
-#define GET_RAND(min, max) ((rand() % (max - min)) + min)
     char *guid = (char *)malloc(sizeof(char) * 37);
     const char *chars = "ABCDEF0123456789";
-    srand((unsigned int)time(NULL));
-    int i = 0;
     
-    for (i = 0; i < 36; i++) {
+    for (int i = 0; i < 36; i++) {
         if (i == 8 || i == 13 || i == 18 || i == 23) {
             guid[i] = '-';
-            continue;
         } else {
-            guid[i] = chars[GET_RAND(0, 16)];
+            guid[i] = chars[rng()() % 16];
         }
     }
     guid[36] = '\0';
     return guid;
-#undef GET_RAND
 }
 #endif
 
@@ -144,9 +150,10 @@ bool TssRequest::isProductTypeValidForRequest(const char *productType){
     
 #pragma mark value modifiers
 void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force, const char *productType){
+    if (!productType) productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
+    retassure(productType, "Unknown device CPID:0x%x BDID:0x%x, please specify the ProductType",cpid,bdid);
     try{
         //check whether the ProductType is supported
-        if (!productType) productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
         retcustomassure(TSSException_unsupportedProductType, isProductTypeValidForRequest(productType), "ProductType is not valid for this request");
     }catch (tihmstar::TSSException_unsupportedProductType &e){
         if (!force) throw;
@@ -154,6 +161,7 @@ void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force, const c
     }
 
     info("Setting device vals: %s CPID:0x%x BDID:0x%x",productType,cpid,bdid);
+    _productType = productType;
     plist_dict_set_item(_pReq, "ApChipID", plist_new_uint(cpid));
     plist_dict_set_item(_pReq, "ApBoardID", plist_new_uint(bdid));
 }
@@ -214,11 +222,8 @@ void TssRequest::setSEPNonce(const tihmstar::Mem &nonce){
 }
 
 void TssRequest::setRandomSEPNonce(){
-    tihmstar::Mem nonce;
-    nonce.resize(SHA_DIGEST_LENGTH);
-    srand((unsigned int)time(NULL));
-    uint64_t sgen = ((uint64_t)rand() << 32) | rand();
-    SHA1((const unsigned char*)&sgen, 8, nonce.data());
+    tihmstar::Mem nonce(SHA_DIGEST_LENGTH);
+    fillRandom(nonce.data(), nonce.size());
     setSEPNonce(nonce.data(), nonce.size());
 }
 
@@ -248,22 +253,18 @@ void TssRequest::setBbGoldCertIdForDevice(const char *productType){
 }
 
 void TssRequest::setDefaultBbGoldCertId(){
-    setBbGoldCertIdForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
+    setBbGoldCertIdForDevice(getProductType().c_str());
 }
 
 void TssRequest::setSNUM(const tihmstar::Mem &snum){
-    auto snumsize = getSNUMLenForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
+    auto snumsize = getSNUMLenForDevice(getProductType().c_str());
     retassure(snum.size() == snumsize, "Bad BbSNUM len %d (expecting %d)",snum.size(),snumsize);
     plist_dict_set_item(_pReq, "BbSNUM", plist_new_data((char*)snum.data(), snum.size()));
 }
 
 void TssRequest::setRandomSNUM(){
-    auto snumsize = getSNUMLenForDevice(getProductTypeFromCPIDandBDID(getCPID(), getBDID()));
-    tihmstar::Mem snum(snumsize);
-    srand((unsigned int)time(NULL));
-    for (int i=0; i<snum.size(); i++) {
-        snum.data()[i] = (uint8_t)rand();
-    }
+    tihmstar::Mem snum(getSNUMLenForDevice(getProductType().c_str()));
+    fillRandom(snum.data(), snum.size());
     setSNUM(snum);
 }
 
@@ -279,25 +280,9 @@ bool TssRequest::addComponent(const char *componentName, bool optional){
         //components inside Manifest
         pComponent = plist_dict_get_item(plist_dict_get_item(pIdentity, "Manifest"), componentName);
         retassure(pComponent || optional, "Failed to add custom non-optional component '%s'",componentName);
-        if (pComponent){
-            //add element to request
-            plist_t pKey = NULL;
-            cleanup([&]{
-                safeFreeCustom(pKey, plist_free);
-            });
-            pKey = plist_new_dict();
-            iterateOverPlistElementsInDict(pComponent, [&](const char *key, plist_t e)->void*{
-                if (plist_get_node_type(e) == PLIST_DICT) return NULL;
-                plist_dict_set_item(pKey, key, plist_copy(e));
-                return NULL;
-            });
-
-            if (plist_t pInfo = plist_dict_get_item(pComponent, "Info")) {
-                if (plist_t pRestoreRules = plist_dict_get_item(pInfo, "RestoreRequestRules")) {
-                    applyRestoreRulesForManifestComponent(pKey, pRestoreRules, _pReq);
-                }
-            }
-            plist_dict_set_item(_pReq, componentName, pKey); pKey = NULL;
+        plist_t pEntry = pComponent ? createRequestEntryForManifestComponent(pComponent) : NULL;
+        if (pEntry){
+            plist_dict_set_item(_pReq, componentName, pEntry);
             info("Adding custom component '%s' to request for variant '%s'",componentName,getVariantNameFromBuildIdentity(pIdentity).c_str());
             return true;
         }else{
@@ -356,7 +341,8 @@ uint64_t TssRequest::getGenerator() const{
 }
 
 std::string TssRequest::getProductType() const{
-    return getProductTypeFromCPIDandBDID(getCPID(), getBDID());
+    retassure(_productType.size(), "ProductType not set");
+    return _productType;
 }
 
 tihmstar::Mem TssRequest::getAPNonce() const{
@@ -449,16 +435,26 @@ void TssRequest::addDefaultAPTagsToRequest(bool skipOptional){
         }
     }
     
-    if (requiresUIDMode) {
-        plist_dict_set_item(_pReq, "UID_MODE", plist_new_bool(0));
-    }
-    
     if (!hasPartialDigest) {
         //this is IMG4
         plist_dict_set_item(_pReq, "@ApImg4Ticket", plist_new_bool(1));
         
         //IMG4 always needs SEP nonce!
         if (!plist_dict_get_item(_pReq, "SepNonce")) setRandomSEPNonce();
+
+        //without these the ticket lacks the nrde/pcrp/pndp properties a restore requests (see libtatsu tss_request_add_ap_img4_tags)
+        copyKeyFromPlist(_pReq, pIdentity, "NeRDEpoch", true);
+        copyKeyFromPlist(_pReq, pIdentity, "PearlCertificationRootPub", true);
+        copyKeyFromPlist(_pReq, pIdentity, "AllowNeRDBoot", true);
+        if (plist_dict_get_item(_pReq, "NeRDEpoch")) {
+            plist_dict_set_item(_pReq, "PermitNeRDPivot", plist_new_data(NULL, 0));
+        }
+
+        if (requiresUIDMode) {
+            //TSS replies with status 69 when Ap,SikaFuse is missing on these devices
+            plist_dict_set_item(_pReq, "UID_MODE", plist_new_bool(0));
+            plist_dict_set_item(_pReq, "Ap,SikaFuse", plist_new_int(0));
+        }
     }else{
         //this is IMG3
         plist_dict_set_item(_pReq, "@APTicket", plist_new_bool(1));
@@ -480,55 +476,67 @@ void TssRequest::addAllAPComponentsToRequest(bool skipNoniBootComponents){
             || strcmp(key, "Diags") == 0 || strcmp(key, "Ap,ExclaveOS") == 0) return NULL;
 
         plist_t pInfo = plist_dict_get_item(e, "Info");
+        if (!pInfo) return NULL;
         bool isTrusted = plist_bool_val_is_true(plist_dict_get_item(e, "Trusted"));
         //IMG4: only components with RestoreRequestRules or Trusted are requested. Others (Savage, Yonkers, eUICC, ...) make TSS reply with status 94
-        if (isImg4 && !(pInfo && plist_dict_get_item(pInfo, "RestoreRequestRules")) && !isTrusted) {
+        if (isImg4 && !plist_dict_get_item(pInfo, "RestoreRequestRules") && !isTrusted) {
             debug("Not adding component '%s' (no RestoreRequestRules and not Trusted)",key);
             return NULL;
         }
-        if (pInfo && plist_bool_val_is_true(plist_dict_get_item(pInfo, "IsFTAB"))) return NULL;
-
-        //add element to request
-        plist_t pKey = NULL;
-        cleanup([&]{
-            safeFreeCustom(pKey, plist_free);
-        });
-        pKey = plist_new_dict();
-        iterateOverPlistElementsInDict(e, [&](const char *key, plist_t e)->void*{
-            if (plist_get_node_type(e) == PLIST_DICT) return NULL;
-            plist_dict_set_item(pKey, key, plist_copy(e));
+        if (plist_bool_val_is_true(plist_dict_get_item(pInfo, "IsFTAB"))) return NULL;
+        if (!plist_dict_get_item(e, "Digest") && !plist_dict_get_item(e, "PartialDigest") && !isTrusted) {
+            debug("Not adding component '%s' (no digest)",key);
             return NULL;
-        });
-
-        if (pInfo) {
-            if (plist_t pRestoreRules = plist_dict_get_item(pInfo, "RestoreRequestRules")) {
-                applyRestoreRulesForManifestComponent(pKey, pRestoreRules, _pReq);
-            }
         }
-        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest") || isTrusted;
         if (skipNoniBootComponents) {
             for (const char *prefix : {"Yonkers", "Savage", "Cryptex", "BMU", "eUICC"}) {
-                if (strncmp(key, prefix, strlen(prefix)) == 0) addComponent = false;
+                if (strncmp(key, prefix, strlen(prefix)) == 0) return NULL;
             }
         }
 
-        if (addComponent) {
+        if (plist_t pEntry = createRequestEntryForManifestComponent(e)) {
             debug("Adding component '%s'",key);
-            if (isImg4 && !plist_dict_get_item(pKey, "Digest")) {
-                plist_dict_set_item(pKey, "Digest", plist_new_data(NULL, 0));
-            }
-            plist_dict_set_item(_pReq, key, pKey); pKey = NULL;
-        }else{
-            debug("Not adding component '%s'",key);
+            plist_dict_set_item(_pReq, key, pEntry);
         }
         return NULL;
     });
 }
 
+plist_t TssRequest::createRequestEntryForManifestComponent(plist_t pComponent){
+    plist_t pEntry = NULL;
+    cleanup([&]{
+        safeFreeCustom(pEntry, plist_free);
+    });
+    bool isImg4 = plist_dict_get_item(_pReq, "@ApImg4Ticket");
+
+    pEntry = plist_copy(pComponent);
+    plist_dict_remove_item(pEntry, "Info");
+
+    if (plist_t pRestoreRules = plist_access_path(pComponent, 2, "Info", "RestoreRequestRules")) {
+        applyRestoreRulesForManifestComponent(pEntry, pRestoreRules, _pReq);
+    }else if (isImg4) {
+        if (plist_t v = plist_dict_get_item(_pReq, "ApProductionMode")) plist_dict_set_item(pEntry, "EPRO", plist_copy(v));
+        if (plist_t v = plist_dict_get_item(_pReq, "ApSecurityMode")) plist_dict_set_item(pEntry, "ESEC", plist_copy(v));
+    }
+
+    if (plist_bool_val_is_true(plist_dict_get_item(pComponent, "Trusted")) && !plist_dict_get_item(pEntry, "Digest")) {
+        plist_dict_set_item(pEntry, "Digest", plist_new_data(NULL, 0));
+    }
+
+    if (plist_dict_get_size(pEntry) == 0) return NULL;
+    plist_t ret = pEntry; pEntry = NULL;
+    return ret;
+}
+
 void TssRequest::addBasebandComponentsToRequest(){
     plist_t pIdentity = getSelectedBuildIdentity();
     info("Adding Baseband components to request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
-    copyKeyFromPlist(_pReq, plist_dict_get_item(pIdentity, "Manifest"), "BasebandFirmware");
+    plist_t pBBFW = NULL;
+    retassureMissingValue("BasebandFirmware", pBBFW = plist_access_path(pIdentity, 2, "Manifest", "BasebandFirmware"), "Failed to get BasebandFirmware");
+    pBBFW = plist_copy(pBBFW);
+    plist_dict_remove_item(pBBFW, "Info");
+    plist_dict_set_item(_pReq, "BasebandFirmware", pBBFW);
+    plist_dict_set_item(_pReq, "@BBTicket", plist_new_bool(1));
     iterateOverPlistElementsInDict(pIdentity, [&](const char *key, plist_t e)->void*{
         if (strncmp(key, "Bb", 2) != 0) return NULL;
         if (strcmp(key, "BbChipID") == 0 && plist_get_node_type(e) == PLIST_STRING) {
@@ -585,7 +593,7 @@ void TssRequest::addYonkersComponentsToRequest(){
 void TssRequest::removeBasebandComponentsFromRequest(){
     std::vector<std::string> delkeys;
     iterateOverPlistElementsInDict(_pReq, [&](const char *key, plist_t e)->void*{
-        if (strncmp(key, "Bb", 2) != 0 && strcmp(key, "BasebandFirmware") != 0) return NULL;
+        if (strncmp(key, "Bb", 2) != 0 && strcmp(key, "BasebandFirmware") != 0 && strcmp(key, "@BBTicket") != 0) return NULL;
         delkeys.push_back(key);
         return NULL;
     });
@@ -606,6 +614,7 @@ void TssRequest::removeNonBasebandComponentsFromRequest(){
         whitelistKey("@UUID");
         whitelistKey("ApChipID");
         whitelistKey("ApProductionMode");
+        whitelistKey("@BBTicket");
 
         //actual baseband keys
         whitelistKey("BasebandFirmware");
@@ -631,34 +640,26 @@ plist_t TssRequest::getBuildIdentityForDevice(plist_t pBuildManifest, uint32_t c
     plist_t pBuildIdentities = NULL;
     retassure(pBuildIdentities = plist_dict_get_item(pBuildManifest, "BuildIdentities"), "Failed to get BuildIdentities");
     
-    return iterateOverPlistElementsInArray(pBuildIdentities, [&](plist_t e)->plist_t{
-        uint64_t cCPID = 0;
-        uint64_t cBDID = 0;
-        {
-            plist_t pCPID = NULL;
-            plist_t pBDID = NULL;
-            retassure(pCPID = plist_dict_get_item(e, "ApChipID"), "Failed to read cpid of buildidentiy");
-            retassure(pBDID = plist_dict_get_item(e, "ApBoardID"), "Failed to read bdid of buildidentiy");
-
-            char *sCPID = NULL;
-            char *sBDID = NULL;
-            cleanup([&]{
-                safeFree(sCPID);
-                safeFree(sBDID);
-            });
-            plist_get_string_val(pCPID, &sCPID);
-            plist_get_string_val(pBDID, &sBDID);
-            cCPID = strtoll(sCPID, NULL, 16);
-            cBDID = strtoll(sBDID, NULL, 16);
-         }
-        if (cCPID != cpid || cBDID != bdid) return 0;
-        
-        auto v = getVariantNameFromBuildIdentity(e);
-        if (strstr(v.c_str(), variant.c_str())){
-            return e;
+    std::vector<plist_t> candidates;
+    iterateOverPlistElementsInArray(pBuildIdentities, [&](plist_t e)->void*{
+        if (getNumberFromStringElementInDict(e, "ApChipID") == cpid && getNumberFromStringElementInDict(e, "ApBoardID") == bdid) {
+            candidates.push_back(e);
         }
-        return 0;
+        return NULL;
     });
+
+    for (auto e : candidates) {
+        if (getVariantNameFromBuildIdentity(e) == variant) return e;
+    }
+    //partial names like "Erase Install (IPSW)" must not select a Research variant unless asked for
+    bool wantsResearch = variant.find("Research") != std::string::npos;
+    for (auto e : candidates) {
+        auto v = getVariantNameFromBuildIdentity(e);
+        if (v.find(variant) == std::string::npos) continue;
+        if (!wantsResearch && v.find("Research") != std::string::npos) continue;
+        return e;
+    }
+    return NULL;
 }
 
 std::string TssRequest::getVariantNameFromBuildIdentity(plist_t pBuildIdentity){
@@ -710,7 +711,7 @@ uint64_t TssRequest::getNumberFromStringElementInDict(plist_t dict, const char *
     const char *s = NULL;
     uint64_t slen = 0;
     retassure(s = plist_get_string_ptr(pE, &slen), "Failed to get '%s' string",key);
-    return strtoll(s, NULL, base);
+    return strtoull(s, NULL, base);
 }
 
 tihmstar::Mem TssRequest::getApImg4TicketFromTssResponse(plist_t tssrsp){
@@ -738,38 +739,28 @@ tihmstar::Mem TssRequest::getElementFromTssResponse(plist_t tssrsp, const char *
 }
 
 void TssRequest::applyRestoreRulesForManifestComponent(plist_t component, plist_t restoreRules, plist_t tss_request){
-    int rule = -1;
     iterateOverPlistElementsInArray(restoreRules, [&](plist_t e)->void*{
-        ++rule;
-        if (plist_t pConditions = plist_dict_get_item(e, "Conditions")) {
-            bool conditionsFailed = !!iterateOverPlistElementsInDict(pConditions, [&](const char *key, plist_t cond)->void*{
-                plist_t val = NULL;
-                if (strcmp(key, "ApRequiresImage4") == 0)
-                    val = plist_dict_get_item(tss_request, "@ApImg4Ticket");
-                else if (strcmp(key, "ApRawProductionMode") == 0)
-                    val = plist_dict_get_item(tss_request, "ApProductionMode");
-                else if (strcmp(key, "ApCurrentProductionMode") == 0)
-                    val = plist_dict_get_item(tss_request, "ApProductionMode");
-                else if (strcmp(key, "ApDemotionPolicyOverride") == 0)
-                    val = plist_dict_get_item(tss_request, "DemotionPolicy");
-                else if (strcmp(key, "ApInRomDFU") == 0)
-                    val = plist_dict_get_item(tss_request, "ApInRomDFU");
-                else if (strcmp(key, "ApRawSecurityMode") == 0)
-                    val = plist_dict_get_item(tss_request, "ApSecurityMode");
-                else reterror("Unknown restore rule '%s'",key);
+        bool conditionsFailed = !!iterateOverPlistElementsInDict(plist_dict_get_item(e, "Conditions"), [&](const char *key, plist_t cond)->void*{
+            const char *requestKey = NULL;
+            if (strcmp(key, "ApRequiresImage4") == 0) requestKey = "@ApImg4Ticket";
+            else if (strcmp(key, "ApRawProductionMode") == 0) requestKey = "ApProductionMode";
+            else if (strcmp(key, "ApCurrentProductionMode") == 0) requestKey = "ApProductionMode";
+            else if (strcmp(key, "ApDemotionPolicyOverride") == 0) requestKey = "DemotionPolicy";
+            else if (strcmp(key, "ApInRomDFU") == 0) requestKey = "ApInRomDFU";
+            else if (strcmp(key, "ApRawSecurityMode") == 0) requestKey = "ApSecurityMode";
+            else {
+                warning("Unhandled condition '%s' in RestoreRequestRules, treating rule as not fulfilled",key);
+                return (void*)1;
+            }
+            plist_t val = plist_dict_get_item(tss_request, requestKey);
+            return (void*)(uintptr_t)!(val && plist_compare_node_value(val, cond));
+        });
+        if (conditionsFailed) return NULL;
 
-                bool ret = false;
-                if (val) ret = plist_compare_node_value(val, cond);
-//                debug("[%d] Checking rule '%s'=%s [%s]",rule,key,plist_bool_val_is_true(cond) ? "TRUE" : "FALSE",ret ? "PASS" : "FAIL");
-                return (void*)!ret;
-            });
-            if (conditionsFailed) return NULL;
-            
-            iterateOverPlistElementsInDict(plist_dict_get_item(e, "Actions"), [&](const char *key, plist_t action)->void*{
-                plist_dict_set_item(component, key, plist_copy(action));
-                return NULL;
-            });
-        }
+        iterateOverPlistElementsInDict(plist_dict_get_item(e, "Actions"), [&](const char *key, plist_t action)->void*{
+            if (plist_get_node_type(action) == PLIST_BOOLEAN) plist_dict_set_item(component, key, plist_copy(action));
+            return NULL;
+        });
         return NULL;
     });
 }
@@ -781,18 +772,18 @@ char *TssRequest::TssSendPlistRequest(const plist_t tssreq, const char *server_u
     });
     uint32_t xmlSize = 0;
     plist_to_xml(tssreq, &xml, &xmlSize);
-    return TssSendRawBuffer(xml, xmlSize);
+    return TssSendRawBuffer(xml, xmlSize, server_url_string);
 }
 
 char *TssRequest::TssSendRawBuffer(const char *buf, size_t bufSize, const char *server_url_string){
 #define TSS_URLS_NUM 6
     const char* urls[TSS_URLS_NUM] = {
         "https://gs.apple.com/TSS/controller?action=2",
+        "https://gs.apple.com.akadns.net/TSS/controller?action=2",
+        "https://gs.apple.com.v.aaplimg.com/TSS/controller?action=2",
         "http://gs.apple.com/TSS/controller?action=2",
-        "https://17.111.103.65/TSS/controller?action=2",
-        "https://17.111.103.15/TSS/controller?action=2",
-        "http://17.111.103.65/TSS/controller?action=2",
-        "http://17.111.103.15/TSS/controller?action=2",
+        "http://gs.apple.com.akadns.net/TSS/controller?action=2",
+        "http://gs.apple.com.v.aaplimg.com/TSS/controller?action=2",
     };
     
     for (int i = 0; i < TSS_MAX_TRIES; i++) {
@@ -848,11 +839,13 @@ char *TssRequest::TssSendRawBuffer(const char *buf, size_t bufSize, const char *
         
         if (!(status = strstr(rspstr, "STATUS="))){
             error("Failed to find status in response");
+            std::this_thread::sleep_for(std::chrono::seconds(2));
             continue;
         }
         status += sizeof("STATUS=")-1;
         if (!(message = strstr(rspstr, "MESSAGE="))){
             error("Failed to find message in response");
+            message = "";
         }else{
             message += sizeof("MESSAGE=")-1;
             if (const char *end = strstr(message, "&")) {
@@ -862,7 +855,7 @@ char *TssRequest::TssSendRawBuffer(const char *buf, size_t bufSize, const char *
             }
         }
         status_code = atoi(status);
-        info("Status: %d (%.*s)",status_code,messageLen,message);
+        info("Status: %d (%.*s)",status_code,(int)messageLen,message);
         if (status_code) break;
         const char *ticket = NULL;
         retassure(ticket = strstr(message+messageLen, "REQUEST_STRING="), "Failed to find response");
