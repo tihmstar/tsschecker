@@ -39,7 +39,7 @@ public:
     TssRequest &operator=(const TssRequest &) = delete;
     ~TssRequest();
     
-    plist_t getTSSResponce();
+    plist_t getTSSResponce(const char *serverURL = NULL);
     
 #pragma mark verifiers
     bool isProductTypeValidForRequest(const char *productType);
@@ -65,6 +65,8 @@ public:
     bool addComponent(const char *componentName, bool optional = false);
     bool deleteComponent(const char *componentName);
     void unsetAPNonce();
+    //nonce-less ticket ("noNonce" in saved blobs): TSS needs ApNonce present but empty, status 69 without it
+    void setEmptyAPNonce();
     
 #pragma mark value getters
     uint32_t getCPID() const;

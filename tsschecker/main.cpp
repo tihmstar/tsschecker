@@ -45,6 +45,7 @@ static struct option longopts[] = {
     { "cache",              optional_argument, NULL, 'c' },
     { "device",             required_argument, NULL, 'd' },
     { "ecid",               required_argument, NULL, 'e' },
+    { "erase-install",      no_argument,       NULL, 'E' },
     { "generator",          required_argument, NULL, 'g' },
     { "ios",                required_argument, NULL, 'i' },
     { "latest",             no_argument,       NULL, 'l' },
@@ -62,6 +63,7 @@ static struct option longopts[] = {
     { "appledb",            no_argument,       NULL,  0  },
     { "bbsnum",             required_argument, NULL,  0  },
     { "bdid",               required_argument, NULL,  0  },
+    { "bplist",             no_argument,       NULL,  0  },
     { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
     { "cpid",               required_argument, NULL,  0  },
@@ -77,6 +79,7 @@ static struct option longopts[] = {
     { "print-tss-request",  no_argument,       NULL,  0  },
     { "print-tss-response", no_argument,       NULL,  0  },
     { "raw",                required_argument, NULL,  0  },
+    { "server-url",         required_argument, NULL,  0  },
 
     { NULL, 0, NULL, 0 }
 };
@@ -92,6 +95,7 @@ void cmd_help(){
     printf("  -d, --device MODEL\t\tspecific device by its model (eg. iPhone4,1)\n");
     printf("  -e, --ecid ECID\t\tmanually specify ECID to be used for fetching signing tickets, instead of using random ones\n");
     printf("                 \t\tECID must be either DEC or HEX eg. 5482657301265 or ab46efcbf71\n");
+    printf("  -E, --erase-install\t\trequest only the erase ticket (no extra update and nonce-less tickets when saving)\n");
     printf("  -g, --generator GEN\t\tmanually specify generator in format 0x%%16llx\n");
     printf("  -i, --ios VERSION\t\tspecific firmware version (eg. 6.1.3)\n");
     printf("  -l, --latest\t\t\tuse latest public firmware version instead of manually specifying one\n");
@@ -111,6 +115,7 @@ void cmd_help(){
     printf("                 \t\t(used automatically when ipsw.me has no firmwares for the device)\n");
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
     printf("      --bdid <bdid> Manually specify bdid\n");
+    printf("      --bplist\t\t\tsave shsh blobs as binary plist\n");
     printf("      --beta\t\t\tinclude beta firmwares in firmware lists (OTA only, use with -o)\n");
     printf("  -c, --cache\t\t\tCache requests to firmware api (-c -c or --cache=2 only stores the cache)\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
@@ -126,7 +131,8 @@ void cmd_help(){
     /* Debugging */
     printf("      --print-tss-request\tprint TSS request that will be sent to Apple\n");
     printf("      --print-tss-response\tprint TSS response that come from Apple\n");
-    printf("      --raw\t\t\tsend raw file to Apple's TSS server (useful for debugging)\n\n");
+    printf("      --raw\t\t\tsend raw file to Apple's TSS server (useful for debugging)\n");
+    printf("      --server-url URL\t\tsend TSS requests to URL instead of Apple's servers\n\n");
 }
 
 
@@ -162,6 +168,8 @@ int main_r(int argc, const char * argv[]) {
     const char *buildManifestPath = NULL;
     const char *bbsnum = NULL;
     const char *cryptexNonceStr = NULL;
+    const char *serverURL = NULL;
+    bool saveBplist = false;
     const char *cryptexSeedStr = NULL;
 
     std::string versionNumber;
@@ -175,7 +183,7 @@ int main_r(int argc, const char * argv[]) {
     uint32_t cpid = 0;
     uint32_t bdid = 0;
 
-    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:g:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
+    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:Eg:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0:
             {
@@ -195,6 +203,10 @@ int main_r(int argc, const char * argv[]) {
                     bbsnum = optarg;
                 }else if (curopt == "beta") {
                     includeBeta = true;
+                }else if (curopt == "bplist") {
+                    saveBplist = true;
+                }else if (curopt == "server-url") {
+                    serverURL = optarg;
                 }else if (curopt == "bdid") {
                     bdid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "cpid") {
@@ -245,6 +257,10 @@ int main_r(int argc, const char * argv[]) {
 
             case 'e': //long option "ecid"
                 ecid = parseECID(optarg);
+                break;
+
+            case 'E': //long option "erase-install"
+                restoreVariant = RESTORE_VARIANT_ERASE_INSTALL;
                 break;
 
             case 'g': //long option "generator"
@@ -323,7 +339,7 @@ int main_r(int argc, const char * argv[]) {
         });
         auto req = tihmstar::readFile(rawRequestPath);
         if (doPrintTssRequest) printf("\nrequest:\n%.*s\n",(int)req.size(),(char*)req.data());
-        rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size());
+        rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size(), serverURL);
         if (doPrintTssResponse) printf("response:\n%s\n",rsp);
         if (savePath && rsp) {
             tihmstar::writeFile(savePath, rsp, strlen(rsp));
@@ -477,10 +493,12 @@ int main_r(int argc, const char * argv[]) {
         
         retassure(p_BuildManifest, "Failed to load BuildManifest.plist");
         
-        auto buildRequest = [&](TssRequest &req){
+        auto buildRequest = [&](TssRequest &req, bool noNonce){
+            //nonce-less tickets are requested without baseband, like the C tsschecker does
+            RequestSelector selection = noNonce ? kRequestSelectorDefaultBasebandNo : requestSelection;
             req.setDeviceVals(cpid, bdid, false, productType);
             req.setEcid(ecid);
-            if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
+            if (selection != kRequestSelectorDefaultBasebandOnly) {
                 req.addDefaultAPTagsToRequest();
                 if (whitelistComponents.size() == 0) {
                     req.addAllAPComponentsToRequest();
@@ -491,7 +509,9 @@ int main_r(int argc, const char * argv[]) {
                     }
                 }
 
-                if (!apnonce && !generator) {
+                if (noNonce) {
+                    req.setEmptyAPNonce();
+                }else if (!apnonce && !generator) {
                     req.setNonceGenerator(0x726174736d686974); //"tihmstar" as little-endian uint64
                 }else{
                     if (generator) req.setNonceGenerator(generator);
@@ -508,7 +528,7 @@ int main_r(int argc, const char * argv[]) {
                 info("Requesting baseband-only ticket");
             }
         
-            if (requestSelection == kRequestSelectorDefaultBasebandNo){
+            if (selection == kRequestSelectorDefaultBasebandNo){
                 info("Not requesting baseband ticket");
             } else{
                 try {
@@ -519,13 +539,13 @@ int main_r(int argc, const char * argv[]) {
                         else req.setRandomSNUM();
                     } catch (tihmstar::exception &e) {
                         error("Failed to construct baseband request with error:\n%s",e.dumpStr().c_str());
-                        if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
+                        if (selection == kRequestSelectorDefaultBasebandOnly) throw;
                         warning("Skipping requesting baseband ticket due to previous errors");
                         //a partial baseband request makes TSS fail the whole request (status 161)
                         req.removeBasebandComponentsFromRequest();
                     }
                 } catch (tihmstar::TSSException_missingValue &e) {
-                    if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
+                    if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || selection == kRequestSelectorDefaultBasebandOnly) throw;
                     warning("Skipping requesting baseband ticket, because required baseband values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
                     req.removeBasebandComponentsFromRequest();
                 }
@@ -536,7 +556,7 @@ int main_r(int argc, const char * argv[]) {
             if (doPrintTssRequest) req.dumpRequest();
             plist_t ret = NULL;
             try {
-                ret = req.getTSSResponce();
+                ret = req.getTSSResponce(serverURL);
             } catch (tihmstar::TSSException_NoTicket &e) {
                 //
             }
@@ -545,7 +565,7 @@ int main_r(int argc, const char * argv[]) {
         };
 
         TssRequest req(p_BuildManifest,restoreVariant);
-        buildRequest(req);
+        buildRequest(req, false);
         rsp = sendRequest(req);
         if (rsp) {
             info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
@@ -557,7 +577,7 @@ int main_r(int argc, const char * argv[]) {
                 info("Also requesting ticket for variant '%s'",RESTORE_VARIANT_UPGRADE_INSTALL);
                 try {
                     TssRequest ureq(p_BuildManifest,RESTORE_VARIANT_UPGRADE_INSTALL);
-                    buildRequest(ureq);
+                    buildRequest(ureq, false);
                     if (plist_t ursp = sendRequest(ureq)) {
                         plist_dict_remove_item(ursp, "generator");
                         plist_dict_set_item(rsp, "updateInstall", ursp);
@@ -566,6 +586,23 @@ int main_r(int argc, const char * argv[]) {
                     }
                 } catch (tihmstar::exception &e) {
                     warning("Skipping update ticket:\n%s",e.dumpStr().c_str());
+                }
+            }
+
+            //nonce-less ticket, saved as noNonce like the C tsschecker. TSS refuses it for many devices
+            if (savePath && restoreVariant.empty() && requestSelection != kRequestSelectorDefaultBasebandOnly) {
+                info("Also requesting ticket without a nonce");
+                try {
+                    TssRequest nreq(p_BuildManifest,restoreVariant);
+                    buildRequest(nreq, true);
+                    if (plist_t nrsp = sendRequest(nreq)) {
+                        plist_dict_remove_item(nrsp, "generator");
+                        plist_dict_set_item(rsp, "noNonce", nrsp);
+                    }else{
+                        info("TSS gives no nonce-less ticket for this device");
+                    }
+                } catch (tihmstar::exception &e) {
+                    warning("Skipping nonce-less ticket:\n%s",e.dumpStr().c_str());
                 }
             }
 
@@ -594,7 +631,7 @@ int main_r(int argc, const char * argv[]) {
 
             if (savePath) {
                 auto ticketpath = getTicketSavePathFromRequest(savePath, req);
-                writePlist(ticketpath.c_str(), rsp);
+                writePlist(ticketpath.c_str(), rsp, saveBplist);
                 info("APTicket saved to '%s'",ticketpath.c_str());
             }
             

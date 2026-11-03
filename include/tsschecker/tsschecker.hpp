@@ -43,7 +43,7 @@ namespace tsschecker {
 
 #pragma mark file handling
     plist_t readPlist(const char *path);
-    void writePlist(const char *path, plist_t plist);
+    void writePlist(const char *path, plist_t plist, bool binary = false);
 
     std::string getTicketSavePathFromRequest(const char *path, const TssRequest &req);
 

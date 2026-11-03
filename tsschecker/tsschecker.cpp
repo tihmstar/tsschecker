@@ -576,13 +576,14 @@ plist_t tsschecker::readPlist(const char *path){
     }
 }
 
-void tsschecker::writePlist(const char *path, plist_t plist){
+void tsschecker::writePlist(const char *path, plist_t plist, bool binary){
     char *xml = NULL;
     cleanup([&]{
         safeFree(xml);
     });
     uint32_t xmlSize = 0;
-    plist_to_xml(plist, &xml, &xmlSize);
+    if (binary) plist_to_bin(plist, &xml, &xmlSize);
+    else plist_to_xml(plist, &xml, &xmlSize);
     writeFile(path, xml, xmlSize);
 }
 

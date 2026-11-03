@@ -19,13 +19,14 @@ Layers, top to bottom. Each layer only calls the ones below it.
 |---|---|---|
 | CLI | `tsschecker/main.cpp` | option parsing, device resolution, choosing firmware, printing, saving blobs |
 | request builder + transport | `tsschecker/TssRequest.cpp`, `include/tsschecker/TssRequest.hpp` | build the TSS plist from a BuildManifest identity, send it, parse the reply |
-| firmware lists | `tsschecker/FirmwareAPI.cpp` (selection, cache dir), `tsschecker/FirmwareAPI_IPSWME.cpp` (ipsw.me v4 API) | which IPSW/OTA exists for a device and its URL |
+| firmware lists | `tsschecker/FirmwareAPI.cpp` (selection, cache dir), `FirmwareAPI_JSON.cpp` (download + cache per URL), `FirmwareAPI_IPSWME.cpp` (ipsw.me v4 API), `FirmwareAPI_AppleDB.cpp` (AppleDB) | which IPSW/OTA exists for a device and its URL |
 | helpers + device database | `tsschecker/tsschecker.cpp` | parsing, downloads (curl, libfragmentzip), libirecovery lookups, baseband table `bbdevices[]`, nonce type per CPID, plist iteration |
 | errors | `tsschecker/TSSException.cpp`, `include/tsschecker/TSSException.hpp` | exception types the CLI catches |
 
 External libraries: libgeneral (`retassure`/`cleanup`/`info` macros, `Mem`, `readFile`/`writeFile`), libplist
 (>= 2.3), libirecovery (device database), libfragmentzip (reads `BuildManifest.plist` out of a remote zip), curl,
-openssl, and the `external/jssy` submodule (JSON tokenizer).
+openssl, and the `external/jssy` submodule (JSON tokenizer, used for ipsw.me). jssy can't parse an empty `[]`/`{}`
+followed by a sibling (`{"a":[],"b":1}`), so AppleDB responses are parsed with libplist `plist_from_json`.
 
 Rules for where code goes:
 - Request content (which keys, which components, restore rules) lives in `TssRequest`. `main.cpp` only calls the
@@ -48,6 +49,11 @@ Rules for where code goes:
 - Firmware lists use the ipsw.me v4 API (`/v4/devices`, `/v4/device/<id>?type=ipsw|ota`). The v2.1
   `ota.json` endpoint returns `null`. OTA lists skip betas unless `--beta`, prefer full OTAs over deltas, and drop
   the `9.9.` version prefix of full OTAs.
+- AppleDB (`--appledb`, and automatically when ipsw.me has no firmwares for the device or returns 404): catalog
+  `ios/<OS>/main.json` (24 MB for iOS) has builds, devices and IPSW links. OTA links are only in the per-build record
+  `ios/<key>.json`, fetched for the selected build via `FirmwareAPI::resolveFirmwareURL`. New OTAs are often only
+  encrypted `.aea` (iPhone17,1, watchOS 11+), which libfragmentzip can't read: selection stops with an error instead
+  of falling back to an older build. AppleDB has the decryption keys, so remote AEA reading is possible future work.
 - Verified live: iPhone12,5 (27.0.1, 27.2, OTA 27.2) and iPhone17,1 (27.2) return status 0 with `ApImg4Ticket` and
   `BBTicket`; AP components match libtatsu (`.claude/skills/tss-parity`).
 - Cryptex1 ticket (`--cryptex-nonce` + `--cryptex-seed`): separate request built by `TssRequest::makeCryptex1Request`
@@ -55,10 +61,13 @@ Rules for where code goes:
   TSS answers 168 without `Cryptex1,ProductionMode` or `Cryptex1,UDID` (BE64 ChipID + BE64 ECID). The Cryptex1 manifest
   components must be sent, or the ticket holds no image digests (the justtestingafewthings/1Conan C fork's filter drops
   them). Saved as `cryptexTicket`/`cryptexSeed`. When saving an Erase ticket without `-u`/`-V`, an `updateInstall`
-  ticket is saved too (futurerestore `-u`).
+  ticket is saved too (futurerestore `-u`), plus a `noNonce` ticket (empty `ApNonce`, no baseband; TSS 69 when
+  ApNonce is missing, 456 on devices that don't allow it, e.g. iPhone17,1). `-E` requests only the erase ticket.
+  `--server-url` and `--bplist` as in the C tsschecker.
 - Known gaps: Yonkers/Savage/SE/Rose tickets (separate requests in libtatsu) are not implemented
   (`addYonkersComponentsToRequest` is a stub). iOS 4 without APTickets is a TODO. ipsw.me's `/v4/devices` has no
-  Watch6+ entries (they have no IPSWs), so `--list-devices` doesn't show them, and it has no OTA entries for some new devices (iPhone17,1 gives "no firmwares found" with `-o`). SSL verification is off for TSS, as in
+  Watch6+ entries (use `--appledb --list-devices`). OTAs that exist only as `.aea` can't be checked without `-m`.
+  SSL verification is off for TSS, as in
   libtatsu.
 
 ## Working Rules

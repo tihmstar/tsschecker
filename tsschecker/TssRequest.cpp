@@ -102,12 +102,12 @@ void TssRequest::setStandardValues(){
 }
 
 #pragma mark public
-plist_t TssRequest::getTSSResponce(){
+plist_t TssRequest::getTSSResponce(const char *serverURL){
     char *rsp = NULL;
     cleanup([&]{
         safeFree(rsp);
     });
-    retcustomassure(TSSException_NoTicket, rsp = TssSendPlistRequest(_pReq), "Failed to get ticket");
+    retcustomassure(TSSException_NoTicket, rsp = TssSendPlistRequest(_pReq, serverURL), "Failed to get ticket");
     {
         plist_t ret = NULL;
         plist_from_memory(rsp, (uint32_t)strlen(rsp), &ret, NULL);
@@ -300,6 +300,10 @@ bool TssRequest::deleteComponent(const char *componentName){
 
 void TssRequest::unsetAPNonce(){
     deleteComponent("ApNonce");
+}
+
+void TssRequest::setEmptyAPNonce(){
+    plist_dict_set_item(_pReq, "ApNonce", plist_new_data(NULL, 0));
 }
 
 #pragma mark value getters

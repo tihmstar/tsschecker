@@ -6,7 +6,7 @@ current state, validation); this file repeats what is needed to work safely.
 ## What this is
 A C++17 CLI and library that sends TSS requests to `gs.apple.com` to check firmware signing and save `.shsh2`
 blobs. `main.cpp` (CLI) → `TssRequest.cpp` (request builder and transport) → `FirmwareAPI*.cpp` (ipsw.me v4
-firmware lists) → `tsschecker.cpp` (helpers, libirecovery lookups, baseband table).
+and AppleDB firmware lists) → `tsschecker.cpp` (helpers, libirecovery lookups, baseband table).
 
 ## Rules
 - TSS requests must match libtatsu (`libimobiledevice/libtatsu`, `src/tss.c`). Check the libtatsu function before
