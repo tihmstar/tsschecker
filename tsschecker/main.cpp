@@ -524,6 +524,24 @@ int main_r(int argc, const char * argv[]) {
             info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
             retval = 0;
 
+            //futurerestore uses the updateInstall ticket for update restores (-u)
+            if (savePath && restoreVariant.empty() && requestSelection != kRequestSelectorDefaultBasebandOnly
+                && TssRequest::getVariantNameFromBuildIdentity(req.getSelectedBuildIdentity()) == RESTORE_VARIANT_ERASE_INSTALL) {
+                info("Also requesting ticket for variant '%s'",RESTORE_VARIANT_UPGRADE_INSTALL);
+                try {
+                    TssRequest ureq(p_BuildManifest,RESTORE_VARIANT_UPGRADE_INSTALL);
+                    buildRequest(ureq);
+                    if (plist_t ursp = sendRequest(ureq)) {
+                        plist_dict_remove_item(ursp, "generator");
+                        plist_dict_set_item(rsp, "updateInstall", ursp);
+                    }else{
+                        warning("Failed to get ticket for variant '%s'",RESTORE_VARIANT_UPGRADE_INSTALL);
+                    }
+                } catch (tihmstar::exception &e) {
+                    warning("Skipping update ticket:\n%s",e.dumpStr().c_str());
+                }
+            }
+
             if (cryptexNonce.size()) {
                 info("Also requesting Cryptex1 ticket");
                 try {

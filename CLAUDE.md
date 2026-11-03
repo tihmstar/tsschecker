@@ -50,7 +50,13 @@ Rules for where code goes:
   the `9.9.` version prefix of full OTAs.
 - Verified live: iPhone12,5 (27.0.1, 27.2, OTA 27.2) and iPhone17,1 (27.2) return status 0 with `ApImg4Ticket` and
   `BBTicket`; AP components match libtatsu (`.claude/skills/tss-parity`).
-- Known gaps: Yonkers/Savage/SE/Rose/Cryptex tickets (separate requests in libtatsu) are not implemented
+- Cryptex1 ticket (`--cryptex-nonce` + `--cryptex-seed`): separate request built by `TssRequest::makeCryptex1Request`
+  (libtatsu `tss_request_add_cryptex_tags` plus the device fields idevicerestore gets from DeviceGeneratedRequest).
+  TSS answers 168 without `Cryptex1,ProductionMode` or `Cryptex1,UDID` (BE64 ChipID + BE64 ECID). The Cryptex1 manifest
+  components must be sent, or the ticket holds no image digests (the justtestingafewthings/1Conan C fork's filter drops
+  them). Saved as `cryptexTicket`/`cryptexSeed`. When saving an Erase ticket without `-u`/`-V`, an `updateInstall`
+  ticket is saved too (futurerestore `-u`).
+- Known gaps: Yonkers/Savage/SE/Rose tickets (separate requests in libtatsu) are not implemented
   (`addYonkersComponentsToRequest` is a stub). iOS 4 without APTickets is a TODO. ipsw.me's `/v4/devices` has no
   Watch6+ entries (they have no IPSWs), so `--list-devices` doesn't show them, and it has no OTA entries for some new devices (iPhone17,1 gives "no firmwares found" with `-o`). SSL verification is off for TSS, as in
   libtatsu.
