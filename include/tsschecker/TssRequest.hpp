@@ -92,7 +92,15 @@ public:
     void addAllAPComponentsToRequest(bool skipNoniBootComponents = false);
     void addBasebandComponentsToRequest();
     //turns this request into a separate Cryptex1 ticket request (call after setDeviceVals and setEcid)
-    void makeCryptex1Request(const tihmstar::Mem &cryptexNonce);
+    // iOS 27 adds two explicit request fields idevicerestore/libauthinstall set that
+    // older libtatsu did not (RE'd from the on-device libauthinstall.dylib):
+    //   * Cryptex1,NonceDomain — fourcc tag selecting which img4 nonce domain the
+    //     ticket binds to (e.g. "trca" for cryptex1.boot.os, "trcs" for ...app).
+    //     An empty string omits the key for backward compatibility with iOS 26-.
+    //   * Cryptex1,ChipID — mirror of ApChipID; iOS 27 TSS reads it even though
+    //     Cryptex1,UDID already encodes it.
+    void makeCryptex1Request(const tihmstar::Mem &cryptexNonce,
+                             const std::string &nonceDomain = "");
     //turn this request into a separate co-processor ticket request (libtatsu tss_request_add_{se,savage,yonkers,rose}_tags).
     //deviceValues holds what the device reports during a restore, with libtatsu's key names, and optionally the
     //device's DeviceGeneratedRequest. Call after setDeviceVals

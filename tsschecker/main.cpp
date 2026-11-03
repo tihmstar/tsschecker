@@ -71,6 +71,7 @@ static struct option longopts[] = {
     { "cryptex-nonce",      required_argument, NULL,  0  },
     { "cryptex-seed",       required_argument, NULL,  0  },
     { "cryptex-key",        required_argument, NULL,  0  },
+    { "cryptex-nonce-domain", required_argument, NULL,  0  },
     { "se",                 required_argument, NULL,  0  },
     { "savage",             required_argument, NULL,  0  },
     { "yonkers",            required_argument, NULL,  0  },
@@ -130,6 +131,10 @@ void cmd_help(){
     printf("      --cryptex-seed SEED\tCryptex1 seed (16 bytes HEX) stored with the Cryptex1 ticket in the saved blob\n");
     printf("      --cryptex-key KEY\tderive the Cryptex1 nonce from --cryptex-seed with the device's 0x8A4 key (16 bytes HEX)\n");
     printf("                 \t\tinstead of --cryptex-nonce. UNVERIFIED derivation\n");
+    printf("      --cryptex-nonce-domain TAG\tset Cryptex1,NonceDomain (iOS 27 TSS reads this).\n");
+    printf("                 \t\tFourcc tag selecting the img4 nonce domain the ticket binds to.\n");
+    printf("                 \t\tCommon values: 'trca' (cryptex1.boot.os), 'trcs' (cryptex1.boot.app),\n");
+    printf("                 \t\t'ltrs' (cryptex1.preboot.app). Omit for iOS 26- behavior.\n");
     printf("      --se PLIST\t\talso request an SE ticket, using the device values in PLIST\n");
     printf("      --savage PLIST\t\talso request a Savage ticket, using the device values in PLIST\n");
     printf("      --yonkers PLIST\t\talso request a Yonkers ticket, using the device values in PLIST\n");
@@ -181,6 +186,7 @@ int main_r(int argc, const char * argv[]) {
     const char *buildManifestPath = NULL;
     const char *bbsnum = NULL;
     const char *cryptexNonceStr = NULL;
+    const char *cryptexNonceDomain = NULL;
     const char *serverURL = NULL;
     bool saveBplist = false;
     const char *cryptexSeedStr = NULL;
@@ -244,6 +250,8 @@ int main_r(int argc, const char * argv[]) {
                     cryptexSeedStr = optarg;
                 }else if (curopt == "cryptex-key") {
                     cryptexKeyStr = optarg;
+                }else if (curopt == "cryptex-nonce-domain") {
+                    cryptexNonceDomain = optarg;
                 }else if (curopt == "se" || curopt == "savage" || curopt == "yonkers" || curopt == "rose") {
                     for (auto &c : coprocessors) {
                         if (curopt == c.option) c.path = optarg;
@@ -668,7 +676,8 @@ int main_r(int argc, const char * argv[]) {
                     TssRequest creq(p_BuildManifest,restoreVariant);
                     creq.setDeviceVals(cpid, bdid, false, productType);
                     creq.setEcid(ecid);
-                    creq.makeCryptex1Request(cryptexNonce);
+                    creq.makeCryptex1Request(cryptexNonce,
+                        cryptexNonceDomain ? std::string(cryptexNonceDomain) : std::string());
                     plist_t crsp = sendRequest(creq);
                     if (crsp && plist_dict_get_item(crsp, "Cryptex1,Ticket")) {
                         info("Got Cryptex1 ticket");

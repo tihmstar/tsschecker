@@ -574,9 +574,13 @@ void TssRequest::addBasebandComponentsToRequest(){
     });
 }
 
-void TssRequest::makeCryptex1Request(const tihmstar::Mem &cryptexNonce){
+void TssRequest::makeCryptex1Request(const tihmstar::Mem &cryptexNonce,
+                                     const std::string &nonceDomain){
     plist_t pIdentity = getSelectedBuildIdentity();
-    info("Building Cryptex1 request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
+    info("Building Cryptex1 request for variant '%s'%s%s",
+         getVariantNameFromBuildIdentity(pIdentity).c_str(),
+         nonceDomain.empty() ? "" : " nonce-domain=",
+         nonceDomain.empty() ? "" : nonceDomain.c_str());
     retassure(cryptexNonce.size() == 32, "Bad Cryptex1 nonce len %d (expecting %d)",cryptexNonce.size(),32);
 
     //libtatsu tss_request_add_common_tags
@@ -625,6 +629,19 @@ void TssRequest::makeCryptex1Request(const tihmstar::Mem &cryptexNonce){
         plist_dict_set_item(_pReq, "Cryptex1,UDID", plist_new_data((char*)udid, sizeof(udid)));
     }
     plist_dict_set_item(_pReq, "Cryptex1,Nonce", plist_new_data((char*)cryptexNonce.data(), cryptexNonce.size()));
+
+    //iOS 27 libauthinstall mirrors ApChipID into the Cryptex1 request even though
+    //Cryptex1,UDID already encodes it. RE'd from AMAuthInstallUpdaterCryptex1CreateRequest.
+    plist_dict_set_item(_pReq, "Cryptex1,ChipID", plist_new_uint(getCPID()));
+
+    //iOS 27 adds NonceDomain to select which img4 nonce domain the ticket binds to.
+    //Valid fourcc tags enumerated in the kernelcache's nonce_domains table
+    //(com.apple.filesystems...Image4 kext): "trca" (cryptex1.boot.os), "trcs"
+    //(cryptex1.boot.app), "ltrs" (cryptex1.preboot.app), etc. Empty string skips
+    //the key to preserve iOS 26- behavior.
+    if (!nonceDomain.empty()) {
+        plist_dict_set_item(_pReq, "Cryptex1,NonceDomain", plist_new_string(nonceDomain.c_str()));
+    }
 }
 
 #pragma mark co-processor requests
