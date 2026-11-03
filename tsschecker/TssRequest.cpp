@@ -627,46 +627,241 @@ void TssRequest::makeCryptex1Request(const tihmstar::Mem &cryptexNonce){
     plist_dict_set_item(_pReq, "Cryptex1,Nonce", plist_new_data((char*)cryptexNonce.data(), cryptexNonce.size()));
 }
 
-void TssRequest::addYonkersComponentsToRequest(){
-    reterror("TODO implement!");
-//    plist_t pIdentity = getSelectedBuildIdentity();
-//    info("Adding Yonkery components to request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
-//    
-//    plist_t pManifest = NULL;
-//    retassure(pManifest = plist_dict_get_item(pIdentity, "Manifest"), "Failed to get Manifest");
-//    
-//    iterateOverPlistElementsInDict(pManifest, [&](const char *key, plist_t e)->void*{
-//        if (strncmp(key, "Yonkers", sizeof("Yonkers")-1) != 0) return NULL;
-//        //add element to request
-//        plist_t pKey = NULL;
-//        cleanup([&]{
-//            safeFreeCustom(pKey, plist_free);
-//        });
-//        pKey = plist_new_dict();
-//        iterateOverPlistElementsInDict(e, [&](const char *key, plist_t e)->void*{
-//            if (plist_get_node_type(e) == PLIST_DICT) return NULL;
-//            plist_dict_set_item(pKey, key, plist_copy(e));
-//            return NULL;
-//        });
-//
-//        if (plist_t pInfo = plist_dict_get_item(e, "Info")) {
-//            if (plist_t pRestoreRules = plist_dict_get_item(pInfo, "RestoreRequestRules")) {
-//                applyRestoreRulesForManifestComponent(pKey, pRestoreRules, _pReq);
-//            }
-//        }
-//        bool addComponent = plist_dict_get_item(pKey, "Digest") || plist_dict_get_item(pKey, "PartialDigest");
-//
-//        if (addComponent) {
-//            debug("Adding component '%s'",key);
-//            plist_dict_set_item(_pReq, key, pKey); pKey = NULL;
-//        }else{
-//            debug("Not adding component '%s'",key);
-//        }
-//        return NULL;
-//    });
-//    plist_dict_set_item(_pReq, "@Yonkers,Ticket", plist_new_bool(1));
+#pragma mark co-processor requests
+//copies a uint, accepting the hex strings BuildManifests use (like libplist plist_dict_copy_uint)
+static bool copyUIntKey(plist_t dst, plist_t src, const char *key){
+    plist_t v = plist_dict_get_item(src, key);
+    if (!v) return false;
+    if (plist_get_node_type(v) == PLIST_UINT) {
+        plist_dict_set_item(dst, key, plist_copy(v));
+    }else if (plist_get_node_type(v) == PLIST_STRING) {
+        plist_dict_set_item(dst, key, plist_new_uint(strtoull(plist_get_string_ptr(v, NULL), NULL, 0)));
+    }else{
+        return false;
+    }
+    return true;
 }
 
+static void copyRequiredKey(plist_t dst, plist_t src, const char *key, plist_type type){
+    plist_t v = plist_dict_get_item(src, key);
+    if (!v) error("Missing required value '%s' (pass it in the device values plist)",key);
+    retassureMissingValue(key, v, "Missing required value");
+    if (type == PLIST_UINT) {
+        retassure(copyUIntKey(dst, src, key), "Value '%s' must be an integer",key);
+        return;
+    }
+    retassure(plist_get_node_type(v) == type, "Value '%s' has the wrong type",key);
+    plist_dict_set_item(dst, key, plist_copy(v));
+}
+
+static void copyOptionalKey(plist_t dst, plist_t src, const char *key){
+    if (plist_t v = plist_dict_get_item(src, key)) plist_dict_set_item(dst, key, plist_copy(v));
+}
+
+plist_t TssRequest::beginCoprocessorRequest(plist_t deviceValues, std::initializer_list<const char*> manifestKeys, bool mergeDeviceValues){
+    retassure(deviceValues && plist_get_node_type(deviceValues) == PLIST_DICT, "Device values must be a dictionary");
+    plist_t pIdentity = getSelectedBuildIdentity();
+    plist_t params = plist_new_dict();
+    cleanup([&]{
+        safeFreeCustom(params, plist_free);
+    });
+
+    //libtatsu tss_parameters_add_from_manifest
+    plist_dict_set_item(params, "Manifest", plist_copy(plist_dict_get_item(pIdentity, "Manifest")));
+    for (const char *k : manifestKeys) copyUIntKey(params, pIdentity, k);
+    //device values win, like plist_dict_merge(&parameters, p_info) in idevicerestore
+    if (mergeDeviceValues) {
+        iterateOverPlistElementsInDict(deviceValues, [&](const char *key, plist_t e)->void*{
+            if (strcmp(key, "DeviceGeneratedRequest") != 0) plist_dict_set_item(params, key, plist_copy(e));
+            return NULL;
+        });
+    }
+
+    //libtatsu tss_request_new: these requests carry no AP values
+    plist_t req = plist_new_dict();
+    plist_dict_set_item(req, "@HostPlatformInfo", plist_copy(plist_dict_get_item(_pReq, "@HostPlatformInfo")));
+    plist_dict_set_item(req, "@VersionInfo", plist_new_string(TSS_CLIENT_VERSION_STRING));
+    if (plist_t uuid = plist_dict_get_item(_pReq, "@UUID")) plist_dict_set_item(req, "@UUID", plist_copy(uuid));
+    plist_free(_pReq); _pReq = req;
+
+    plist_t ret = params; params = NULL;
+    return ret;
+}
+
+void TssRequest::mergeDeviceGeneratedRequest(plist_t deviceValues){
+    plist_t dgr = plist_dict_get_item(deviceValues, "DeviceGeneratedRequest");
+    if (!dgr) return;
+    retassure(plist_get_node_type(dgr) == PLIST_DICT, "DeviceGeneratedRequest must be a dictionary");
+    iterateOverPlistElementsInDict(dgr, [&](const char *key, plist_t e)->void*{
+        plist_dict_set_item(_pReq, key, plist_copy(e));
+        return NULL;
+    });
+}
+
+void TssRequest::makeSERequest(plist_t deviceValues){
+    plist_t params = beginCoprocessorRequest(deviceValues, {"SE,ChipID"});
+    cleanup([&]{
+        safeFreeCustom(params, plist_free);
+    });
+    //libtatsu tss_request_add_se_tags
+    plist_dict_set_item(_pReq, "@BBTicket", plist_new_bool(1));
+    copyRequiredKey(_pReq, params, "SE,ChipID", PLIST_UINT);
+    copyRequiredKey(_pReq, params, "SE,ID", PLIST_DATA);
+    copyRequiredKey(_pReq, params, "SE,Nonce", PLIST_DATA);
+    copyRequiredKey(_pReq, params, "SE,RootKeyIdentifier", PLIST_DATA);
+    bool isDev = plist_bool_val_is_true(plist_dict_get_item(params, "SE,IsDev"));
+
+    iterateOverPlistElementsInDict(plist_dict_get_item(params, "Manifest"), [&](const char *key, plist_t e)->void*{
+        if (strncmp(key, "SE,", 3) != 0) return NULL;
+        plist_t entry = plist_copy(e);
+        plist_dict_remove_item(entry, "Info");
+        for (const char *k : isDev ? std::initializer_list<const char*>{"ProductionCMAC", "ProductionUpdatePayloadHash"}
+                                   : std::initializer_list<const char*>{"DevelopmentCMAC", "DevelopmentUpdatePayloadHash"}) {
+            plist_dict_remove_item(entry, k);
+        }
+        plist_dict_set_item(_pReq, key, entry);
+        return NULL;
+    });
+    mergeDeviceGeneratedRequest(deviceValues);
+    if (!plist_dict_get_item(_pReq, "@SE2,Ticket") && !plist_dict_get_item(_pReq, "@SE,Ticket")) {
+        plist_dict_set_item(_pReq, "@SE,Ticket", plist_new_bool(1));
+    }
+}
+
+void TssRequest::makeSavageRequest(plist_t deviceValues){
+    plist_t params = beginCoprocessorRequest(deviceValues, {"Savage,ChipID", "Savage,PatchEpoch"});
+    cleanup([&]{
+        safeFreeCustom(params, plist_free);
+    });
+    plist_t pManifest = plist_dict_get_item(params, "Manifest");
+    //libtatsu tss_request_add_savage_tags
+    plist_dict_set_item(_pReq, "@BBTicket", plist_new_bool(1));
+    plist_dict_set_item(_pReq, "@Savage,Ticket", plist_new_bool(1));
+    copyRequiredKey(_pReq, params, "Savage,UID", PLIST_DATA);
+    {
+        plist_t digest = NULL;
+        retassureMissingValue("SEP", digest = plist_access_path(pManifest, 2, "SEP", "Digest"), "Failed to get SEP digest from manifest");
+        plist_t sep = plist_new_dict();
+        plist_dict_set_item(sep, "Digest", plist_copy(digest));
+        plist_dict_set_item(_pReq, "SEP", sep);
+    }
+    copyRequiredKey(_pReq, params, "Savage,PatchEpoch", PLIST_UINT);
+    copyRequiredKey(_pReq, params, "Savage,ChipID", PLIST_UINT);
+    copyRequiredKey(_pReq, params, "Savage,AllowOfflineBoot", PLIST_BOOLEAN);
+    copyRequiredKey(_pReq, params, "Savage,ReadFWKey", PLIST_BOOLEAN);
+    copyRequiredKey(_pReq, params, "Savage,ProductionMode", PLIST_BOOLEAN);
+
+    bool isProd = plist_bool_val_is_true(plist_dict_get_item(_pReq, "Savage,ProductionMode"));
+    const char *compName = isProd ? "Savage,B0-Prod-Patch" : "Savage,B0-Dev-Patch";
+    plist_t rev = plist_dict_get_item(params, "Savage,Revision");
+    if (rev && plist_get_node_type(rev) == PLIST_DATA) {
+        uint64_t revLen = 0;
+        const uint8_t *r = (const uint8_t*)plist_get_data_ptr(rev, &revLen);
+        if (revLen > 0) {
+            if (((r[0] | 0x10) & 0xF0) == 0x30) compName = isProd ? "Savage,B2-Prod-Patch" : "Savage,B2-Dev-Patch";
+            else if ((r[0] & 0xF0) == 0xA0) compName = isProd ? "Savage,BA-Prod-Patch" : "Savage,BA-Dev-Patch";
+        }
+    }
+    {
+        plist_t comp = NULL;
+        retassure(comp = plist_dict_get_item(pManifest, compName), "Failed to get '%s' from manifest",compName);
+        plist_t entry = plist_copy(comp);
+        plist_dict_remove_item(entry, "Info");
+        plist_dict_set_item(_pReq, compName, entry);
+        info("Using Savage component '%s'",compName);
+    }
+    copyRequiredKey(_pReq, params, "Savage,Nonce", PLIST_DATA);
+    copyRequiredKey(_pReq, params, "Savage,ReadECKey", PLIST_BOOLEAN);
+    mergeDeviceGeneratedRequest(deviceValues);
+}
+
+void TssRequest::makeYonkersRequest(plist_t deviceValues){
+    plist_t params = beginCoprocessorRequest(deviceValues, {"Yonkers,BoardID", "Yonkers,ChipID", "Yonkers,PatchEpoch"});
+    cleanup([&]{
+        safeFreeCustom(params, plist_free);
+    });
+    plist_t pManifest = plist_dict_get_item(params, "Manifest");
+    //libtatsu tss_request_add_yonkers_tags
+    plist_dict_set_item(_pReq, "@BBTicket", plist_new_bool(1));
+    plist_dict_set_item(_pReq, "@Yonkers,Ticket", plist_new_bool(1));
+    {
+        plist_t digest = NULL;
+        retassureMissingValue("SEP", digest = plist_access_path(pManifest, 2, "SEP", "Digest"), "Failed to get SEP digest from manifest");
+        plist_t sep = plist_new_dict();
+        plist_dict_set_item(sep, "Digest", plist_copy(digest));
+        plist_dict_set_item(_pReq, "SEP", sep);
+    }
+    for (const char *k : {"Yonkers,AllowOfflineBoot", "Yonkers,ReadECKey", "Yonkers,ReadFWKey", "Yonkers,ProductionMode"}) {
+        copyRequiredKey(_pReq, params, k, PLIST_BOOLEAN);
+    }
+    for (const char *k : {"Yonkers,BoardID", "Yonkers,ChipID", "Yonkers,ECID", "Yonkers,PatchEpoch"}) {
+        copyRequiredKey(_pReq, params, k, PLIST_UINT);
+    }
+    copyRequiredKey(_pReq, params, "Yonkers,Nonce", PLIST_DATA);
+
+    bool isProd = plist_bool_val_is_true(plist_dict_get_item(params, "Yonkers,ProductionMode"));
+    uint64_t fabRevision = 0;
+    if (plist_t f = plist_dict_get_item(params, "Yonkers,FabRevision")) {
+        if (plist_get_node_type(f) == PLIST_UINT) plist_get_uint_val(f, &fabRevision);
+    }
+    //the SysTopPatch whose EPRO and FabRevision match the device
+    std::string compName;
+    iterateOverPlistElementsInDict(pManifest, [&](const char *key, plist_t e)->void*{
+        if (strncmp(key, "Yonkers,SysTopPatch", sizeof("Yonkers,SysTopPatch")-1) != 0) return NULL;
+        plist_t epro = plist_dict_get_item(e, "EPRO");
+        if (epro && plist_get_node_type(epro) == PLIST_BOOLEAN && plist_bool_val_is_true(epro) != isProd) return NULL;
+        plist_t fab = plist_dict_get_item(e, "FabRevision");
+        if (fab && plist_get_node_type(fab) == PLIST_UINT) {
+            uint64_t v = 0;
+            plist_get_uint_val(fab, &v);
+            if (v != fabRevision) return NULL;
+        }
+        compName = key;
+        return (void*)1;
+    });
+    retassure(compName.size(), "No Yonkers,SysTopPatch for %s/FabRevision %llu in manifest",isProd ? "Production" : "Development",fabRevision);
+    plist_t entry = plist_copy(plist_dict_get_item(pManifest, compName.c_str()));
+    plist_dict_remove_item(entry, "Info");
+    plist_dict_set_item(_pReq, compName.c_str(), entry);
+    info("Using Yonkers component '%s'",compName.c_str());
+    mergeDeviceGeneratedRequest(deviceValues);
+}
+
+void TssRequest::makeRoseRequest(plist_t deviceValues){
+    //idevicerestore restore_get_rose_firmware_data: a DeviceGeneratedRequest replaces the info values
+    bool hasDGR = plist_dict_get_item(deviceValues, "DeviceGeneratedRequest") != NULL;
+    plist_t params = beginCoprocessorRequest(deviceValues, {"Rap,BoardID", "Rap,ChipID", "Rap,SecurityDomain"}, !hasDGR);
+    cleanup([&]{
+        safeFreeCustom(params, plist_free);
+    });
+    plist_dict_set_item(params, "ApProductionMode", plist_new_bool(1));
+    plist_dict_set_item(params, "ApSecurityMode", plist_new_bool(1));
+    plist_dict_set_item(params, "@ApImg4Ticket", plist_new_bool(1)); //ApRequiresImage4 in applyRestoreRulesForManifestComponent
+    mergeDeviceGeneratedRequest(deviceValues);
+
+    //libtatsu tss_request_add_rose_tags
+    plist_dict_set_item(_pReq, "@BBTicket", plist_new_bool(1));
+    plist_dict_set_item(_pReq, "@Rap,Ticket", plist_new_bool(1));
+    for (const char *k : {"Rap,BoardID", "Rap,ChipID", "Rap,ECID", "Rap,SecurityDomain"}) {
+        if (plist_dict_get_item(params, k)) copyUIntKey(_pReq, params, k);
+    }
+    for (const char *k : {"Rap,Nonce", "Rap,ProductionMode", "Rap,SecurityMode", "Rap,FdrRootCaDigest"}) {
+        copyOptionalKey(_pReq, params, k);
+    }
+    iterateOverPlistElementsInDict(plist_dict_get_item(params, "Manifest"), [&](const char *key, plist_t e)->void*{
+        if (strncmp(key, "Rap,", 4) != 0) return NULL;
+        plist_t entry = plist_copy(e);
+        if (plist_t rules = plist_access_path(e, 2, "Info", "RestoreRequestRules")) {
+            applyRestoreRulesForManifestComponent(entry, rules, params);
+        }
+        if (plist_bool_val_is_true(plist_dict_get_item(entry, "Trusted")) && !plist_dict_get_item(entry, "Digest")) {
+            plist_dict_set_item(entry, "Digest", plist_new_data(NULL, 0));
+        }
+        plist_dict_remove_item(entry, "Info");
+        plist_dict_set_item(_pReq, key, entry);
+        return NULL;
+    });
+}
 
 void TssRequest::removeBasebandComponentsFromRequest(){
     std::vector<std::string> delkeys;

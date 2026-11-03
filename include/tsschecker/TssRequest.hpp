@@ -12,6 +12,7 @@
 #include <plist/plist.h>
 #include <iostream>
 #include <vector>
+#include <initializer_list>
 #include <stdint.h>
 
 #define RESTORE_VARIANT_ERASE_INSTALL               "Customer Erase Install (IPSW)"
@@ -33,6 +34,9 @@ class TssRequest{
     
     void setStandardValues();
     plist_t createRequestEntryForManifestComponent(plist_t pComponent);
+    //resets the request to a bare one and returns the parameters (manifest values, then device values) like libtatsu
+    plist_t beginCoprocessorRequest(plist_t deviceValues, std::initializer_list<const char*> manifestKeys, bool mergeDeviceValues = true);
+    void mergeDeviceGeneratedRequest(plist_t deviceValues);
 public:
     TssRequest(const plist_t pBuildManifest, std::string variant = "", bool isBuildIdentity = false);
     TssRequest(const TssRequest &) = delete;
@@ -87,9 +91,15 @@ public:
     void addDefaultAPTagsToRequest(bool skipOptional = false);
     void addAllAPComponentsToRequest(bool skipNoniBootComponents = false);
     void addBasebandComponentsToRequest();
-    void addYonkersComponentsToRequest();
     //turns this request into a separate Cryptex1 ticket request (call after setDeviceVals and setEcid)
     void makeCryptex1Request(const tihmstar::Mem &cryptexNonce);
+    //turn this request into a separate co-processor ticket request (libtatsu tss_request_add_{se,savage,yonkers,rose}_tags).
+    //deviceValues holds what the device reports during a restore, with libtatsu's key names, and optionally the
+    //device's DeviceGeneratedRequest. Call after setDeviceVals
+    void makeSERequest(plist_t deviceValues);
+    void makeSavageRequest(plist_t deviceValues);
+    void makeYonkersRequest(plist_t deviceValues);
+    void makeRoseRequest(plist_t deviceValues);
 
     void removeBasebandComponentsFromRequest();
     void removeNonBasebandComponentsFromRequest();

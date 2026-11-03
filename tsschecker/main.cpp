@@ -18,6 +18,7 @@
 #include <string.h>
 #include <random>
 #include <algorithm>
+#include <memory>
 
 
 
@@ -69,6 +70,10 @@ static struct option longopts[] = {
     { "cpid",               required_argument, NULL,  0  },
     { "cryptex-nonce",      required_argument, NULL,  0  },
     { "cryptex-seed",       required_argument, NULL,  0  },
+    { "se",                 required_argument, NULL,  0  },
+    { "savage",             required_argument, NULL,  0  },
+    { "yonkers",            required_argument, NULL,  0  },
+    { "rose",               required_argument, NULL,  0  },
 
     /* Info & Listing */
     { "list-devices",       no_argument,       NULL,  0  },
@@ -122,6 +127,11 @@ void cmd_help(){
     printf("      --cpid <cpid> Manually specify cpid\n");
     printf("      --cryptex-nonce NONCE\talso request a Cryptex1 ticket for this Cryptex1 nonce (32 bytes HEX, needs --cryptex-seed)\n");
     printf("      --cryptex-seed SEED\tCryptex1 seed (16 bytes HEX) stored with the Cryptex1 ticket in the saved blob\n");
+    printf("      --se PLIST\t\talso request an SE ticket, using the device values in PLIST\n");
+    printf("      --savage PLIST\t\talso request a Savage ticket, using the device values in PLIST\n");
+    printf("      --yonkers PLIST\t\talso request a Yonkers ticket, using the device values in PLIST\n");
+    printf("      --rose PLIST\t\talso request a Rose (Rap) ticket, using the device values in PLIST\n");
+    printf("                 \t\t(values as the device reports them in a restore, libtatsu key names, e.g. Savage,UID)\n");
 
     /* Info & Listing */
     printf("      --list-devices\t\tlist all known devices\n");
@@ -171,6 +181,19 @@ int main_r(int argc, const char * argv[]) {
     const char *serverURL = NULL;
     bool saveBplist = false;
     const char *cryptexSeedStr = NULL;
+    struct Coprocessor{
+        const char *option;
+        const char *path;
+        void (TssRequest::*make)(plist_t);
+        const char *blobKey;
+        std::unique_ptr<void, void(*)(plist_t)> values{nullptr, plist_free};
+    };
+    Coprocessor coprocessors[] = {
+        {"se", NULL, &TssRequest::makeSERequest, "seTicket"},
+        {"savage", NULL, &TssRequest::makeSavageRequest, "savageTicket"},
+        {"yonkers", NULL, &TssRequest::makeYonkersRequest, "yonkersTicket"},
+        {"rose", NULL, &TssRequest::makeRoseRequest, "roseTicket"},
+    };
 
     std::string versionNumber;
     std::string buildNumber;
@@ -215,6 +238,10 @@ int main_r(int argc, const char * argv[]) {
                     cryptexNonceStr = optarg;
                 }else if (curopt == "cryptex-seed") {
                     cryptexSeedStr = optarg;
+                }else if (curopt == "se" || curopt == "savage" || curopt == "yonkers" || curopt == "rose") {
+                    for (auto &c : coprocessors) {
+                        if (curopt == c.option) c.path = optarg;
+                    }
                 }else if (curopt == "list-devices") {
                     doListDevices = true;
                 } else if (curopt == "list-versions") {
@@ -365,6 +392,13 @@ int main_r(int argc, const char * argv[]) {
         }
     }
 
+    for (auto &c : coprocessors) {
+        if (!c.path) continue;
+        c.values.reset(readPlist(c.path));
+        retassure(c.values, "Failed to read --%s plist '%s'",c.option,c.path);
+        retassure(plist_get_node_type(c.values.get()) == PLIST_DICT, "--%s plist '%s' must be a dictionary",c.option,c.path);
+    }
+
     FirmwareAPI *fapi = nullptr;
     cleanup([&]{
         if (fapi) {
@@ -502,8 +536,7 @@ int main_r(int argc, const char * argv[]) {
                 req.addDefaultAPTagsToRequest();
                 if (whitelistComponents.size() == 0) {
                     req.addAllAPComponentsToRequest();
-    //                req.addYonkersComponentsToRequest();
-                }else{
+                    }else{
                     for (auto comp : whitelistComponents) {
                         req.addComponent(comp.c_str());
                     }
@@ -625,6 +658,32 @@ int main_r(int argc, const char * argv[]) {
                     }
                 } catch (tihmstar::exception &e) {
                     error("Failed to request Cryptex1 ticket:\n%s",e.dumpStr().c_str());
+                    retval = 2;
+                }
+            }
+
+            for (auto &c : coprocessors) {
+                if (!c.values) continue;
+                info("Also requesting %s ticket",c.option);
+                try {
+                    TssRequest coreq(p_BuildManifest,restoreVariant);
+                    coreq.setDeviceVals(cpid, bdid, false, productType);
+                    (coreq.*c.make)(c.values.get());
+                    plist_t corsp = sendRequest(coreq);
+                    bool hasTicket = corsp && iterateOverPlistElementsInDict(corsp, [](const char *key, plist_t e)->void*{
+                        size_t len = strlen(key);
+                        return (void*)(uintptr_t)(len > 7 && strcmp(key + len - 7, ",Ticket") == 0);
+                    });
+                    if (hasTicket) {
+                        info("Got %s ticket",c.option);
+                        plist_dict_set_item(rsp, c.blobKey, corsp);
+                    }else{
+                        safeFreeCustom(corsp, plist_free);
+                        error("Failed to get %s ticket",c.option);
+                        retval = 2;
+                    }
+                } catch (tihmstar::exception &e) {
+                    error("Failed to request %s ticket:\n%s",c.option,e.dumpStr().c_str());
                     retval = 2;
                 }
             }
