@@ -21,7 +21,15 @@ OTAs that Apple only publishes as encrypted `.aea` archives can't be read remote
 * `generator`: the generator used for the ApNonce
 
 With `--cryptex-nonce NONCE --cryptex-seed SEED` a Cryptex1 ticket is requested too and saved as `cryptexTicket` and
-`cryptexSeed`. `--bplist` saves a binary plist. `--server-url URL` sends the requests to another TSS server.
+`cryptexSeed`. `--cryptex-key KEY` derives the nonce from the seed and the device's 0x8A4 key instead (unverified
+derivation, tsschecker warns when it's used).
+
+`--se`, `--savage`, `--yonkers` and `--rose` each take a plist with the values the device reports for that chip
+during a restore (libtatsu key names such as `Savage,UID` and `Savage,Nonce`, optionally a `DeviceGeneratedRequest`
+dictionary). The tickets are saved as `seTicket`, `savageTicket`, `yonkersTicket` and `roseTicket`. They are bound to
+the chip's nonce at that moment, so they're mostly useful for exploring TSS.
+
+`--bplist` saves a binary plist. `--server-url URL` sends the requests to another TSS server.
 
 Run `tsschecker -h` for all options.
 

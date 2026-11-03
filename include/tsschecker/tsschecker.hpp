@@ -33,6 +33,9 @@ namespace tsschecker {
 #pragma mark parsers
     uint64_t parseECID(const char *ecid);
     tihmstar::Mem parseHex(const char *hexstr);
+    //Cryptex1 nonce: SHA-384 of the seed encrypted with AES-128-CBC (zero IV) under the device's 0x8A4 key, first
+    //32 bytes. Unverified: taken from zytzjx/tsschecker crypto.go EncryptCryptex1Nonce
+    tihmstar::Mem cryptex1NonceFromSeed(const tihmstar::Mem &seed, const tihmstar::Mem &key);
     firmwareVersion firmwareVersionFromBuildManifest(plist_t pBuildManifest);
 
 #pragma mark downloaders

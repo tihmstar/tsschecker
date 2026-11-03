@@ -70,6 +70,7 @@ static struct option longopts[] = {
     { "cpid",               required_argument, NULL,  0  },
     { "cryptex-nonce",      required_argument, NULL,  0  },
     { "cryptex-seed",       required_argument, NULL,  0  },
+    { "cryptex-key",        required_argument, NULL,  0  },
     { "se",                 required_argument, NULL,  0  },
     { "savage",             required_argument, NULL,  0  },
     { "yonkers",            required_argument, NULL,  0  },
@@ -127,6 +128,8 @@ void cmd_help(){
     printf("      --cpid <cpid> Manually specify cpid\n");
     printf("      --cryptex-nonce NONCE\talso request a Cryptex1 ticket for this Cryptex1 nonce (32 bytes HEX, needs --cryptex-seed)\n");
     printf("      --cryptex-seed SEED\tCryptex1 seed (16 bytes HEX) stored with the Cryptex1 ticket in the saved blob\n");
+    printf("      --cryptex-key KEY\tderive the Cryptex1 nonce from --cryptex-seed with the device's 0x8A4 key (16 bytes HEX)\n");
+    printf("                 \t\tinstead of --cryptex-nonce. UNVERIFIED derivation\n");
     printf("      --se PLIST\t\talso request an SE ticket, using the device values in PLIST\n");
     printf("      --savage PLIST\t\talso request a Savage ticket, using the device values in PLIST\n");
     printf("      --yonkers PLIST\t\talso request a Yonkers ticket, using the device values in PLIST\n");
@@ -181,6 +184,7 @@ int main_r(int argc, const char * argv[]) {
     const char *serverURL = NULL;
     bool saveBplist = false;
     const char *cryptexSeedStr = NULL;
+    const char *cryptexKeyStr = NULL;
     struct Coprocessor{
         const char *option;
         const char *path;
@@ -238,6 +242,8 @@ int main_r(int argc, const char * argv[]) {
                     cryptexNonceStr = optarg;
                 }else if (curopt == "cryptex-seed") {
                     cryptexSeedStr = optarg;
+                }else if (curopt == "cryptex-key") {
+                    cryptexKeyStr = optarg;
                 }else if (curopt == "se" || curopt == "savage" || curopt == "yonkers" || curopt == "rose") {
                     for (auto &c : coprocessors) {
                         if (curopt == c.option) c.path = optarg;
@@ -377,13 +383,30 @@ int main_r(int argc, const char * argv[]) {
 
     tihmstar::Mem cryptexNonce;
     std::string cryptexSeed;
-    if (cryptexNonceStr || cryptexSeedStr) {
+    if (cryptexNonceStr || cryptexSeedStr || cryptexKeyStr) {
         //a Cryptex1 ticket can only be used later together with the seed that produces its nonce
-        retassure(cryptexNonceStr && cryptexSeedStr, "--cryptex-nonce and --cryptex-seed must be used together");
-        cryptexNonce = parseHex(cryptexNonceStr);
-        retassure(cryptexNonce.size() == 32, "Cryptex1 nonce must be 32 bytes, got %d",cryptexNonce.size());
+        retassure(cryptexSeedStr && (cryptexNonceStr || cryptexKeyStr), "--cryptex-seed needs --cryptex-nonce or --cryptex-key, and they need --cryptex-seed");
         auto seed = parseHex(cryptexSeedStr);
         retassure(seed.size() == 16, "Cryptex1 seed must be 16 bytes, got %d",seed.size());
+        if (cryptexNonceStr) {
+            cryptexNonce = parseHex(cryptexNonceStr);
+            retassure(cryptexNonce.size() == 32, "Cryptex1 nonce must be 32 bytes, got %d",cryptexNonce.size());
+        }
+        if (cryptexKeyStr) {
+            auto derived = cryptex1NonceFromSeed(seed, parseHex(cryptexKeyStr));
+            warning("Deriving the Cryptex1 nonce from the seed and key is UNVERIFIED. A wrong nonce gives a ticket that can't be used. Compare it with the nonce your device reports");
+            if (cryptexNonce.size()) {
+                retassure(cryptexNonce.size() == derived.size() && memcmp(cryptexNonce.data(), derived.data(), derived.size()) == 0, "--cryptex-nonce doesn't match the nonce derived with --cryptex-key");
+            }
+            cryptexNonce = derived;
+            std::string hex;
+            for (size_t i=0; i<cryptexNonce.size(); i++) {
+                char buf[4] = {};
+                snprintf(buf, sizeof(buf), "%02x",cryptexNonce.data()[i]);
+                hex += buf;
+            }
+            info("Derived Cryptex1 nonce: %s",hex.c_str());
+        }
         cryptexSeed = "0x";
         for (size_t i=0; i<seed.size(); i++) {
             char buf[4] = {};

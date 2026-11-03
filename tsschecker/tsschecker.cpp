@@ -20,6 +20,14 @@
 #include <sys/stat.h>
 #include <string.h>
 
+#ifdef HAVE_OPENSSL
+#   include <openssl/evp.h>
+#   include <openssl/sha.h>
+#elif defined(HAVE_COMMCRYPTO)
+#   include <CommonCrypto/CommonCryptor.h>
+#   include <CommonCrypto/CommonDigest.h>
+#endif
+
 using namespace tihmstar;
 
 #pragma mark database
@@ -409,6 +417,35 @@ uint64_t tsschecker::parseECID(const char *ecid){
             reterror("Got unexpected char '%c'",c);
         }
     }
+    return ret;
+}
+
+tihmstar::Mem tsschecker::cryptex1NonceFromSeed(const tihmstar::Mem &seed, const tihmstar::Mem &key){
+    retassure(seed.size() == 16, "Cryptex1 seed must be 16 bytes, got %d",seed.size());
+    retassure(key.size() == 16, "Cryptex1 key must be 16 bytes, got %d",key.size());
+    uint8_t iv[16] = {};
+    uint8_t enc[16] = {};
+    uint8_t hash[48] = {};
+#ifdef HAVE_OPENSSL
+    EVP_CIPHER_CTX *ctx = NULL;
+    cleanup([&]{
+        safeFreeCustom(ctx, EVP_CIPHER_CTX_free);
+    });
+    int outl = 0;
+    retassure(ctx = EVP_CIPHER_CTX_new(), "Failed to create cipher context");
+    retassure(EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), NULL, key.data(), iv) == 1, "Failed to init AES");
+    EVP_CIPHER_CTX_set_padding(ctx, 0);
+    retassure(EVP_EncryptUpdate(ctx, enc, &outl, seed.data(), (int)seed.size()) == 1 && outl == 16, "Failed to encrypt seed");
+    SHA384(enc, sizeof(enc), hash);
+#elif defined(HAVE_COMMCRYPTO)
+    size_t moved = 0;
+    retassure(CCCrypt(kCCEncrypt, kCCAlgorithmAES128, 0, key.data(), key.size(), iv, seed.data(), seed.size(), enc, sizeof(enc), &moved) == kCCSuccess && moved == 16, "Failed to encrypt seed");
+    CC_SHA384(enc, sizeof(enc), hash);
+#else
+    reterror("Built without a crypto library");
+#endif
+    tihmstar::Mem ret(32);
+    memcpy(ret.data(), hash, ret.size());
     return ret;
 }
 

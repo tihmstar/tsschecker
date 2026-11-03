@@ -68,10 +68,16 @@ Rules for where code goes:
   `--server-url` and `--bplist` as in the C tsschecker.
 - iOS 4 (IMG3 before 5.0): no `@APTicket` and no ApNonce, TSS answers with per-component SHSH blobs. Can't be
   checked live (Apple no longer signs iOS 4); request shape checked with `--print-tss-request`.
-- Known gaps: Yonkers/Savage/SE/Rose tickets (separate requests in libtatsu) are not implemented
-  (`addYonkersComponentsToRequest` is a stub): they need values only the device has during a restore (Savage/Yonkers
-  UID and nonce, SE ID and nonce), so they can't be saved ahead of time. The Cryptex1 nonce can't be derived from the
-  seed: it needs a device-specific AES key (as A12+ ApNonces do), so `--cryptex-nonce` stays required. ipsw.me's `/v4/devices` has no
+- SE/Savage/Yonkers/Rose tickets (`--se/--savage/--yonkers/--rose PLIST`, `TssRequest::make*Request`): built like
+  libtatsu `tss_request_add_*_tags` with idevicerestore's parameters (manifest values from
+  `tss_parameters_add_from_manifest`, then the device values from the plist, then its `DeviceGeneratedRequest`). Rose
+  with a DeviceGeneratedRequest ignores the other plist values, as idevicerestore does. Verified identical to
+  libtatsu's requests with fake values (local mock TSS server, harness compiled from libtatsu `tss.c`), not against
+  Apple: that needs real device values.
+- `--cryptex-key`: Cryptex1 nonce = first 32 bytes of SHA-384(AES-128-CBC(0x8A4 key, zero IV, seed)), from
+  zytzjx/tsschecker. Unverified against a device; tsschecker warns when it's used.
+- libgeneral `Mem(void*, size_t)` takes ownership of the pointer; `Mem(const void*, size_t)` copies.
+- Known gaps: ipsw.me's `/v4/devices` has no
   Watch6+ entries (use `--appledb --list-devices`). OTAs that exist only as `.aea` can't be checked without `-m`.
   SSL verification is off for TSS, as in
   libtatsu.
