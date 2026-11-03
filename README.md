@@ -6,6 +6,25 @@ tsschecker is a powerful tool to check TSS signing status of various devices and
 * Can check signing status for any firmware version (by specifying a `BuildManifest.plist`).
 * Works without specifying any device relevant values to check signing status, but can be used to save blobs when given an ECID and the option --print-tss-response (although there are better tools to do this).
 
+## Firmware lists
+Firmware and OTA lists come from [ipsw.me](https://ipsw.me). When ipsw.me has nothing for a device (Apple Watch Series 6 and
+newer, OTAs of some new devices), tsschecker uses [AppleDB](https://appledb.dev) instead. `--appledb` always uses AppleDB.
+`-c` caches the responses in `$XDG_CACHE_HOME/tsschecker/` (or `~/.cache/tsschecker/`).
+
+OTAs that Apple only publishes as encrypted `.aea` archives can't be read remotely. Check those with
+`-m BuildManifest.plist`.
+
+## Saving blobs
+`-s [path]` saves the TSS response as `.shsh2`. Unless `-u`, `-E` or `-V` is given, the blob also contains:
+* `updateInstall`: the ticket for an update install (used by futurerestore `-u`)
+* `noNonce`: a ticket without a nonce, when TSS gives one for the device
+* `generator`: the generator used for the ApNonce
+
+With `--cryptex-nonce NONCE --cryptex-seed SEED` a Cryptex1 ticket is requested too and saved as `cryptexTicket` and
+`cryptexSeed`. `--bplist` saves a binary plist. `--server-url URL` sends the requests to another TSS server.
+
+Run `tsschecker -h` for all options.
+
 tsschecker is not only meant to be used to check firmware signing status, but also to explore Apple's TSS servers.
 By using all of its customization possibilities, you might discover a combination of devices and iOS versions that is now getting signed but wasn't getting signed before. 
 
