@@ -15,7 +15,7 @@
 #include <string.h>
 
 extern "C"{
-#include "../external/jssy/jssy/jssy.h"
+#include "../external/jssy/include/jssy/jssy.h"
 }
 
 using namespace tihmstar::tsschecker;
@@ -118,10 +118,6 @@ const jssytok_t *FirmwareAPI_JSON::fetch(const std::string &url){
 std::string FirmwareAPI_JSON::jsonString(const jssytok_t *t){
     if (!t || t->type != JSSY_STRING) return {};
     return {t->value, t->value + t->size};
-}
-
-bool FirmwareAPI_JSON::jsonBool(const jssytok_t *t){
-    return t && t->type == JSSY_PRIMITIVE && t->size == 4 && strncmp(t->value, "true", 4) == 0;
 }
 
 void FirmwareAPI_JSON::sortDevices(std::vector<std::string> &devices){

@@ -25,11 +25,10 @@ protected:
 
     //raw response body, downloaded once per URL (or read from the cache)
     const tihmstar::Mem &fetchData(const std::string &url);
-    //response parsed with jssy (jssy rejects an empty array or dict that has a sibling after it)
+    //response parsed with jssy
     const jssytok *fetch(const std::string &url);
 
     static std::string jsonString(const jssytok *t);
-    static bool jsonBool(const jssytok *t);
     //sorts device identifiers like iPhone10,1 numerically
     static void sortDevices(std::vector<std::string> &devices);
     //sorts firmwares newest build first

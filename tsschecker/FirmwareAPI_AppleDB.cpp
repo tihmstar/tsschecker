@@ -111,7 +111,7 @@ FirmwareAPI_AppleDB::~FirmwareAPI_AppleDB(){
 plist_t FirmwareAPI_AppleDB::fetchPlist(const std::string &url, plist_type type){
     auto &doc = _docs[url];
     if (!doc) {
-        //parsed with libplist: AppleDB has empty arrays followed by more keys, which jssy can't parse
+        //parsed with libplist: the catalog is 1.1M values, and jssy only handles AppleDB's empty arrays since tihmstar/jssy#4
         const tihmstar::Mem &buf = fetchData(url);
         if (plist_from_json((const char*)buf.data(), (uint32_t)buf.size(), &doc) != PLIST_ERR_SUCCESS) safeFreeCustom(doc, plist_free);
         if (doc && plist_get_node_type(doc) != type) safeFreeCustom(doc, plist_free);

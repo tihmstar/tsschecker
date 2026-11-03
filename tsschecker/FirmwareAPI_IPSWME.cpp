@@ -17,7 +17,7 @@
 #include <strings.h>
 
 extern "C"{
-#include "../external/jssy/jssy/jssy.h"
+#include "../external/jssy/include/jssy/jssy.h"
 }
 
 using namespace tihmstar::tsschecker;
