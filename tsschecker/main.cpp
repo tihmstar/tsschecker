@@ -63,6 +63,8 @@ static struct option longopts[] = {
     { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
     { "cpid",               required_argument, NULL,  0  },
+    { "cryptex-nonce",      required_argument, NULL,  0  },
+    { "cryptex-seed",       required_argument, NULL,  0  },
 
     /* Info & Listing */
     { "list-devices",       no_argument,       NULL,  0  },
@@ -109,6 +111,8 @@ void cmd_help(){
     printf("  -c, --cache\t\t\tCache requests to firmware api (-c -c or --cache=2 only stores the cache)\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
     printf("      --cpid <cpid> Manually specify cpid\n");
+    printf("      --cryptex-nonce NONCE\talso request a Cryptex1 ticket for this Cryptex1 nonce (32 bytes HEX, needs --cryptex-seed)\n");
+    printf("      --cryptex-seed SEED\tCryptex1 seed (16 bytes HEX) stored with the Cryptex1 ticket in the saved blob\n");
 
     /* Info & Listing */
     printf("      --list-devices\t\tlist all known devices\n");
@@ -152,6 +156,8 @@ int main_r(int argc, const char * argv[]) {
     const char *savePath = NULL;
     const char *buildManifestPath = NULL;
     const char *bbsnum = NULL;
+    const char *cryptexNonceStr = NULL;
+    const char *cryptexSeedStr = NULL;
 
     std::string versionNumber;
     std::string buildNumber;
@@ -186,6 +192,10 @@ int main_r(int argc, const char * argv[]) {
                     bdid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "cpid") {
                     cpid = (uint32_t)parseECID(optarg);
+                }else if (curopt == "cryptex-nonce") {
+                    cryptexNonceStr = optarg;
+                }else if (curopt == "cryptex-seed") {
+                    cryptexSeedStr = optarg;
                 }else if (curopt == "list-devices") {
                     doListDevices = true;
                 } else if (curopt == "list-versions") {
@@ -315,6 +325,23 @@ int main_r(int argc, const char * argv[]) {
         return 0;
     }
 
+    tihmstar::Mem cryptexNonce;
+    std::string cryptexSeed;
+    if (cryptexNonceStr || cryptexSeedStr) {
+        //a Cryptex1 ticket can only be used later together with the seed that produces its nonce
+        retassure(cryptexNonceStr && cryptexSeedStr, "--cryptex-nonce and --cryptex-seed must be used together");
+        cryptexNonce = parseHex(cryptexNonceStr);
+        retassure(cryptexNonce.size() == 32, "Cryptex1 nonce must be 32 bytes, got %d",cryptexNonce.size());
+        auto seed = parseHex(cryptexSeedStr);
+        retassure(seed.size() == 16, "Cryptex1 seed must be 16 bytes, got %d",seed.size());
+        cryptexSeed = "0x";
+        for (size_t i=0; i<seed.size(); i++) {
+            char buf[4] = {};
+            snprintf(buf, sizeof(buf), "%02x",seed.data()[i]);
+            cryptexSeed += buf;
+        }
+    }
+
     FirmwareAPI *fapi = nullptr;
     cleanup([&]{
         if (fapi) {
@@ -423,73 +450,103 @@ int main_r(int argc, const char * argv[]) {
         
         retassure(p_BuildManifest, "Failed to load BuildManifest.plist");
         
-        TssRequest req(p_BuildManifest,restoreVariant);
-        
-        req.setDeviceVals(cpid, bdid, false, productType);
-        req.setEcid(ecid);
-        if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
-            req.addDefaultAPTagsToRequest();
-            if (whitelistComponents.size() == 0) {
-                req.addAllAPComponentsToRequest();
-//                req.addYonkersComponentsToRequest();
+        auto buildRequest = [&](TssRequest &req){
+            req.setDeviceVals(cpid, bdid, false, productType);
+            req.setEcid(ecid);
+            if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
+                req.addDefaultAPTagsToRequest();
+                if (whitelistComponents.size() == 0) {
+                    req.addAllAPComponentsToRequest();
+    //                req.addYonkersComponentsToRequest();
+                }else{
+                    for (auto comp : whitelistComponents) {
+                        req.addComponent(comp.c_str());
+                    }
+                }
+
+                if (!apnonce && !generator) {
+                    req.setNonceGenerator(0x726174736d686974); //"tihmstar" as little-endian uint64
+                }else{
+                    if (generator) req.setNonceGenerator(generator);
+                    if (apnonce){
+                        if (*apnonce) {
+                            req.setAPNonce(parseHex(apnonce));
+                        }else{
+                            req.unsetAPNonce();
+                        }
+                    }
+                }
+                if (sepnonce) req.setSEPNonce(parseHex(sepnonce));
             }else{
-                for (auto comp : whitelistComponents) {
-                    req.addComponent(comp.c_str());
+                info("Requesting baseband-only ticket");
+            }
+        
+            if (requestSelection == kRequestSelectorDefaultBasebandNo){
+                info("Not requesting baseband ticket");
+            } else{
+                try {
+                    req.addBasebandComponentsToRequest();
+                    try {
+                        req.setDefaultBbGoldCertId();
+                        if (bbsnum) req.setSNUM(parseHex(bbsnum));
+                        else req.setRandomSNUM();
+                    } catch (tihmstar::exception &e) {
+                        error("Failed to construct baseband request with error:\n%s",e.dumpStr().c_str());
+                        if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
+                        warning("Skipping requesting baseband ticket due to previous errors");
+                        //a partial baseband request makes TSS fail the whole request (status 161)
+                        req.removeBasebandComponentsFromRequest();
+                    }
+                } catch (tihmstar::TSSException_missingValue &e) {
+                    if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
+                    warning("Skipping requesting baseband ticket, because required baseband values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
+                    req.removeBasebandComponentsFromRequest();
+                }
+            }
+        };
+        //returns NULL when TSS gives no ticket
+        auto sendRequest = [&](TssRequest &req)->plist_t{
+            if (doPrintTssRequest) req.dumpRequest();
+            plist_t ret = NULL;
+            try {
+                ret = req.getTSSResponce();
+            } catch (tihmstar::TSSException_NoTicket &e) {
+                //
+            }
+            if (ret && doPrintTssResponse) dumpplist(ret);
+            return ret;
+        };
+
+        TssRequest req(p_BuildManifest,restoreVariant);
+        buildRequest(req);
+        rsp = sendRequest(req);
+        if (rsp) {
+            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
+            retval = 0;
+
+            if (cryptexNonce.size()) {
+                info("Also requesting Cryptex1 ticket");
+                try {
+                    TssRequest creq(p_BuildManifest,restoreVariant);
+                    creq.setDeviceVals(cpid, bdid, false, productType);
+                    creq.setEcid(ecid);
+                    creq.makeCryptex1Request(cryptexNonce);
+                    plist_t crsp = sendRequest(creq);
+                    if (crsp && plist_dict_get_item(crsp, "Cryptex1,Ticket")) {
+                        info("Got Cryptex1 ticket");
+                        plist_dict_set_item(rsp, "cryptexTicket", crsp);
+                        plist_dict_set_item(rsp, "cryptexSeed", plist_new_string(cryptexSeed.c_str()));
+                    }else{
+                        safeFreeCustom(crsp, plist_free);
+                        error("Failed to get Cryptex1 ticket");
+                        retval = 2;
+                    }
+                } catch (tihmstar::exception &e) {
+                    error("Failed to request Cryptex1 ticket:\n%s",e.dumpStr().c_str());
+                    retval = 2;
                 }
             }
 
-            if (!apnonce && !generator) {
-                req.setNonceGenerator(0x726174736d686974); //"tihmstar" as little-endian uint64
-            }else{
-                if (generator) req.setNonceGenerator(generator);
-                if (apnonce){
-                    if (*apnonce) {
-                        req.setAPNonce(parseHex(apnonce));
-                    }else{
-                        req.unsetAPNonce();
-                    }
-                }
-            }
-            if (sepnonce) req.setSEPNonce(parseHex(sepnonce));
-        }else{
-            info("Requesting baseband-only ticket");
-        }
-        
-        if (requestSelection == kRequestSelectorDefaultBasebandNo){
-            info("Not requesting baseband ticket");
-        } else{
-            try {
-                req.addBasebandComponentsToRequest();
-                try {
-                    req.setDefaultBbGoldCertId();
-                    if (bbsnum) req.setSNUM(parseHex(bbsnum));
-                    else req.setRandomSNUM();
-                } catch (tihmstar::exception &e) {
-                    error("Failed to construct baseband request with error:\n%s",e.dumpStr().c_str());
-                    if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
-                    warning("Skipping requesting baseband ticket due to previous errors");
-                    //a partial baseband request makes TSS fail the whole request (status 161)
-                    req.removeBasebandComponentsFromRequest();
-                }
-            } catch (tihmstar::TSSException_missingValue &e) {
-                if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
-                warning("Skipping requesting baseband ticket, because required baseband values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
-                req.removeBasebandComponentsFromRequest();
-            }
-        }
-        
-        if (doPrintTssRequest) req.dumpRequest();
-        
-        try {
-            rsp = req.getTSSResponce();
-        } catch (tihmstar::TSSException_NoTicket &e) {
-            //
-        }
-        if (rsp) {
-            if (doPrintTssResponse) dumpplist(rsp);
-            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
-            retval = 0;
-            
             if (savePath) {
                 auto ticketpath = getTicketSavePathFromRequest(savePath, req);
                 writePlist(ticketpath.c_str(), rsp);

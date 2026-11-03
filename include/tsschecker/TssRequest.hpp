@@ -85,6 +85,8 @@ public:
     void addAllAPComponentsToRequest(bool skipNoniBootComponents = false);
     void addBasebandComponentsToRequest();
     void addYonkersComponentsToRequest();
+    //turns this request into a separate Cryptex1 ticket request (call after setDeviceVals and setEcid)
+    void makeCryptex1Request(const tihmstar::Mem &cryptexNonce);
 
     void removeBasebandComponentsFromRequest();
     void removeNonBasebandComponentsFromRequest();

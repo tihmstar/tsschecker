@@ -549,6 +549,59 @@ void TssRequest::addBasebandComponentsToRequest(){
     });
 }
 
+void TssRequest::makeCryptex1Request(const tihmstar::Mem &cryptexNonce){
+    plist_t pIdentity = getSelectedBuildIdentity();
+    info("Building Cryptex1 request for variant '%s'",getVariantNameFromBuildIdentity(pIdentity).c_str());
+    retassure(cryptexNonce.size() == 32, "Bad Cryptex1 nonce len %d (expecting %d)",cryptexNonce.size(),32);
+
+    //libtatsu tss_request_add_common_tags
+    copyKeyFromPlist(_pReq, pIdentity, "UniqueBuildID");
+    plist_dict_set_item(_pReq, "ApSecurityDomain", plist_new_uint(getNumberFromStringElementInDict(pIdentity,"ApSecurityDomain")));
+
+    //libtatsu tss_request_add_cryptex_tags
+    plist_dict_set_item(_pReq, "@Cryptex1,Ticket", plist_new_bool(1));
+    plist_dict_set_item(_pReq, "ApSecurityMode", plist_new_bool(1));
+
+    //idevicerestore restore_get_cryptex1_firmware_data: Cryptex1 tags of the build identity (BuildIdentityTags)
+    bool hasCryptex1 = false;
+    iterateOverPlistElementsInDict(pIdentity, [&](const char *key, plist_t e)->void*{
+        if (strncmp(key, "Cryptex1", sizeof("Cryptex1")-1) != 0) return NULL;
+        plist_dict_set_item(_pReq, key, plist_copy(e));
+        hasCryptex1 = true;
+        return NULL;
+    });
+    retassure(hasCryptex1, "Build identity has no Cryptex1 tags (firmware without Cryptex1)");
+
+    //the rest normally comes from the device's DeviceGeneratedRequest.
+    //Cryptex1 components: without them TSS signs a ticket that holds no image digests
+    plist_t pManifest = NULL;
+    retassure(pManifest = plist_dict_get_item(pIdentity, "Manifest"), "Failed to get Manifest");
+    iterateOverPlistElementsInDict(pManifest, [&](const char *key, plist_t e)->void*{
+        if (strncmp(key, "Cryptex1", sizeof("Cryptex1")-1) != 0) return NULL;
+        if (!plist_dict_get_item(e, "Digest")) return NULL;
+        if (plist_t pEntry = createRequestEntryForManifestComponent(e)) {
+            debug("Adding Cryptex1 component '%s'",key);
+            plist_dict_set_item(_pReq, key, pEntry);
+        }
+        return NULL;
+    });
+
+    //TSS status 168 without Cryptex1,ProductionMode or Cryptex1,UDID
+    plist_dict_set_item(_pReq, "Cryptex1,ProductionMode", plist_new_bool(1));
+    {
+        //UDID: big-endian 64-bit ChipID followed by big-endian 64-bit ECID
+        uint8_t udid[16] = {};
+        uint64_t cpid = getCPID();
+        uint64_t ecid = getECID();
+        for (int i=0; i<8; i++) {
+            udid[7-i] = (uint8_t)(cpid >> (8*i));
+            udid[15-i] = (uint8_t)(ecid >> (8*i));
+        }
+        plist_dict_set_item(_pReq, "Cryptex1,UDID", plist_new_data((char*)udid, sizeof(udid)));
+    }
+    plist_dict_set_item(_pReq, "Cryptex1,Nonce", plist_new_data((char*)cryptexNonce.data(), cryptexNonce.size()));
+}
+
 void TssRequest::addYonkersComponentsToRequest(){
     reterror("TODO implement!");
 //    plist_t pIdentity = getSelectedBuildIdentity();
