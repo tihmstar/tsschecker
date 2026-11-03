@@ -171,9 +171,18 @@ void TssRequest::setEcid(uint64_t ecid){
     plist_dict_set_item(_pReq, "ApECID", plist_new_uint(ecid));
 }
 
+bool TssRequest::takesAPNonce() const{
+    //IMG3 requests without @APTicket (iOS 4) have no nonce
+    return plist_dict_get_item(_pReq, "@APTicket") || plist_dict_get_item(_pReq, "@ApImg4Ticket");
+}
+
 void TssRequest::setNonceGenerator(uint64_t generator){
-    _generator = generator;
     auto nonceType = tsschecker::nonceTypeForCPID(getCPID());
+    if (!takesAPNonce()) {
+        debug("Not setting generator: request has no APTicket");
+        return;
+    }
+    _generator = generator;
     if (nonceType != kNonceTypeNone){
         uint8_t *apnonce = NULL;
         cleanup([&]{
@@ -203,6 +212,7 @@ void TssRequest::setNonceGenerator(uint64_t generator){
 }
 
 void TssRequest::setAPNonce(const void *nonceData, size_t nonceSize){
+    retassure(takesAPNonce(), "This request has no APTicket, so it takes no ApNonce");
     auto nonceType = tsschecker::nonceTypeForCPID(getCPID());
     retassure(nonceSize == 20 || nonceType != kNonceTypeSHA1, "Noncetype is SHA1 but noncelen is %d (expecting %d)",nonceSize,20);
     retassure(nonceSize == 32 || nonceType != kNonceTypeSHA384, "Noncetype is SHA384 but noncelen is %d (expecting %d)",nonceSize,32);
@@ -303,6 +313,7 @@ void TssRequest::unsetAPNonce(){
 }
 
 void TssRequest::setEmptyAPNonce(){
+    if (!takesAPNonce()) return;
     plist_dict_set_item(_pReq, "ApNonce", plist_new_data(NULL, 0));
 }
 
@@ -460,9 +471,19 @@ void TssRequest::addDefaultAPTagsToRequest(bool skipOptional){
             plist_dict_set_item(_pReq, "Ap,SikaFuse", plist_new_int(0));
         }
     }else{
-        //this is IMG3
-        plist_dict_set_item(_pReq, "@APTicket", plist_new_bool(1));
-#warning TODO add support for iOS 4 without APTickets
+        //this is IMG3. APTickets (and ApNonce) exist since iOS 5, iOS 4 gets per-component SHSH blobs
+        int major = 0;
+        try {
+            major = atoi(getProductVersion().c_str());
+        } catch (tihmstar::exception &e) {
+            //request built from a BuildIdentity only: assume APTicket
+        }
+        if (major == 0 || major >= 5) {
+            plist_dict_set_item(_pReq, "@APTicket", plist_new_bool(1));
+        }else{
+            info("Firmware %d.x predates APTickets, requesting per-component SHSH blobs",major);
+            unsetAPNonce();
+        }
     }
 }
 

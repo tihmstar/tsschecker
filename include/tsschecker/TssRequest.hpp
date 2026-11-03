@@ -47,6 +47,7 @@ public:
 #pragma mark value modifiers
     void setDeviceVals(uint32_t cpid, uint32_t bdid, bool force = false, const char *productType = NULL);
     void setEcid(uint64_t ecid);
+    bool takesAPNonce() const;
     void setNonceGenerator(uint64_t generator);
     void setAPNonce(const void *nonceData, size_t nonceSize);
     void setAPNonce(const tihmstar::Mem &nonce);
