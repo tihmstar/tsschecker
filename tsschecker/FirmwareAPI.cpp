@@ -55,14 +55,22 @@ std::string FirmwareAPI::getCachePath(){
 }
 
 
+bool FirmwareAPI::resolveFirmwareURL(firmwareVersion &f, const std::string &device){
+    return f.url.size() != 0;
+}
+
 #pragma mark public
 FirmwareAPI::firmwareVersion FirmwareAPI::getURLForDeviceAndBuild(std::string device, std::string version, std::string build){
     auto firmwares = listVersionsForDevice(device);
     retassure(firmwares.size(), "no firmwares found for device '%s'",device.c_str());
-    if (!build.size() && !version.size()) return firmwares.front();
     for (auto &f : firmwares) {
         if (build.size() && strcasecmp(f.build.c_str(), build.c_str()) != 0) continue;
         if (version.size() && f.version != version) continue;
+        //a version can map to several builds, only some of which ship a file for this device
+        if (!resolveFirmwareURL(f, device)) {
+            debug("Skipping %s %s: no file for '%s'",f.version.c_str(),f.build.c_str(),device.c_str());
+            continue;
+        }
         return f;
     }
     reterror("Failed to find firmware '%s' '%s' for device '%s'",version.c_str(),build.c_str(),device.c_str());

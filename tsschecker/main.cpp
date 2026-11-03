@@ -6,6 +6,7 @@
 //
 
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
+#include <tsschecker/FirmwareAPI_AppleDB.hpp>
 #include <tsschecker/tsschecker.hpp>
 #include <tsschecker/TssRequest.hpp>
 #include <tsschecker/TSSException.hpp>
@@ -58,6 +59,7 @@ static struct option longopts[] = {
     { "verbose",            no_argument,       NULL, 'v' },
 
     /* Long opts */
+    { "appledb",            no_argument,       NULL,  0  },
     { "bbsnum",             required_argument, NULL,  0  },
     { "bdid",               required_argument, NULL,  0  },
     { "beta",               no_argument,       NULL,  0  },
@@ -105,6 +107,8 @@ void cmd_help(){
     printf("  -Z  --buildid <BUILD \t\tspecific buildid instead of firmware version (eg. 13C75)\n");
 
     /* Long opts */
+    printf("      --appledb\t\tget firmware lists from AppleDB instead of ipsw.me\n");
+    printf("                 \t\t(used automatically when ipsw.me has no firmwares for the device)\n");
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
     printf("      --bdid <bdid> Manually specify bdid\n");
     printf("      --beta\t\t\tinclude beta firmwares in firmware lists (OTA only, use with -o)\n");
@@ -137,6 +141,7 @@ int main_r(int argc, const char * argv[]) {
     bool isOta = false;
     bool includeBeta = false;
     CacheSelector useCache = kNoCache;
+    bool useAppleDB = false;
     
     bool doListDevices = false;
     bool doListVersions = false;
@@ -184,6 +189,8 @@ int main_r(int argc, const char * argv[]) {
                         whitelistComponents.push_back(scomp);
                     }
                     whitelistComponents.push_back(components);
+                }else if (curopt == "appledb") {
+                    useAppleDB = true;
                 }else if (curopt == "bbsnum") {
                     bbsnum = optarg;
                 }else if (curopt == "beta") {
@@ -357,21 +364,22 @@ int main_r(int argc, const char * argv[]) {
         }
         safeDelete(fapi);
     });
-    if (!buildManifestPath) {
-        fapi = new FirmwareAPI_IPSWME(isOta, includeBeta);
-        {
-            //load firmwares
-            bool isLoaded = false;
-            try {
-                if (useCache == kCacheLoadAndStore){
-                    fapi->loadcache();
-                    isLoaded = true;
-                }
-            } catch (tihmstar::exception &e) {
-                warning("Failed to load cache with error:\n%s",e.dumpStr().c_str());
+    auto loadFirmwareAPI = [&]{
+        bool isLoaded = false;
+        try {
+            if (useCache == kCacheLoadAndStore){
+                fapi->loadcache();
+                isLoaded = true;
             }
-            if (!isLoaded) fapi->load();
+        } catch (tihmstar::exception &e) {
+            warning("Failed to load cache with error:\n%s",e.dumpStr().c_str());
         }
+        if (!isLoaded) fapi->load();
+    };
+    if (!buildManifestPath) {
+        if (useAppleDB) fapi = new FirmwareAPI_AppleDB(isOta, includeBeta);
+        else fapi = new FirmwareAPI_IPSWME(isOta, includeBeta);
+        loadFirmwareAPI();
     }
     
     if (fapi && doListDevices) {
@@ -403,6 +411,25 @@ int main_r(int argc, const char * argv[]) {
         warning("No ecid specified, generating random ecid!");
         //real ECIDs fit in 52 bits
         ecid = std::mt19937_64{std::random_device{}()}() & 0x000FFFFFFFFFFFFFULL;
+    }
+    //ipsw.me lacks devices without IPSWs (Watch6+) and OTAs for some new devices
+    if (fapi && !useAppleDB && productType && [&]{
+        try {
+            return fapi->listVersionsForDevice(productType).empty();
+        } catch (tihmstar::exception &e) {
+            //ipsw.me answers 404 for devices it doesn't know
+            debug("ipsw.me lookup failed:\n%s",e.dumpStr().c_str());
+            return true;
+        }
+    }()) {
+        info("ipsw.me has no firmwares for %s, using AppleDB",productType);
+        if (useCache >= kCacheLoadAndStore) {
+            try { fapi->storecache(); } catch (tihmstar::exception &e) { warning("Failed to store cache with error:\n%s",e.dumpStr().c_str()); }
+        }
+        safeDelete(fapi);
+        useAppleDB = true;
+        fapi = new FirmwareAPI_AppleDB(isOta, includeBeta);
+        loadFirmwareAPI();
     }
     if (fapi && (doListVersions || doListBuilds)){
         if (!productType){

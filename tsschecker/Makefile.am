@@ -15,7 +15,9 @@ libtsschecker_la_SOURCES = 	tsschecker.cpp \
 							TssRequest.cpp \
 							TSSException.cpp \
 							FirmwareAPI.cpp \
-							FirmwareAPI_IPSWME.cpp
+							FirmwareAPI_JSON.cpp \
+							FirmwareAPI_IPSWME.cpp \
+							FirmwareAPI_AppleDB.cpp
 
 tsschecker_CFLAGS = $(AM_CFLAGS)
 tsschecker_CXXFLAGS = $(AM_CXXFLAGS)

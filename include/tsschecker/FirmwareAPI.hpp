@@ -20,6 +20,8 @@ public:
     using firmwareVersion = tihmstar::tsschecker::firmwareVersion;
 protected:
     std::string getCachePath();
+    //fills in f.url when the list doesn't carry it. Returns false when the firmware has no file for device
+    virtual bool resolveFirmwareURL(firmwareVersion &f, const std::string &device);
 public:
     virtual ~FirmwareAPI() = default;
     

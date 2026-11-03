@@ -27,6 +27,7 @@ namespace tsschecker {
         std::string version;
         std::string build;
         std::string url;
+        std::string key; //source specific id, used to look up url later when it is empty
     };
 
 #pragma mark parsers
