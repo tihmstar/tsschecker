@@ -13,6 +13,8 @@
 		8717FE0D29ADEF7E00B77DE2 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8717FE1129ADF43400B77DE2 /* FirmwareAPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */; };
 		8717FE1429ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */; };
+		5913690F3A39F79437172314 /* FirmwareAPI_AppleDB.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99D74C74D116BB62BAC7FC23 /* FirmwareAPI_AppleDB.cpp */; };
+		48DF2D2322A97B27FF92BA6E /* FirmwareAPI_JSON.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 65E82EF5C4417B52938C51D3 /* FirmwareAPI_JSON.cpp */; };
 		8753870829B0847900D71685 /* jssy.c in Sources */ = {isa = PBXBuildFile; fileRef = 8753870729B0847900D71685 /* jssy.c */; };
 		87B5C28429AE00F300AD4923 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28329AE00EE00AD4923 /* libcurl.tbd */; };
 		87B5C29029AE3D6E00AD4923 /* libfragmentzip.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */; };
@@ -58,10 +60,14 @@
 		8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libgeneral.0.dylib; path = ../../../../usr/local/lib/libgeneral.0.dylib; sourceTree = "<group>"; };
 		8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI.cpp; sourceTree = "<group>"; };
 		8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI_IPSWME.cpp; sourceTree = "<group>"; };
+		99D74C74D116BB62BAC7FC23 /* FirmwareAPI_AppleDB.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI_AppleDB.cpp; sourceTree = "<group>"; };
+		65E82EF5C4417B52938C51D3 /* FirmwareAPI_JSON.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = FirmwareAPI_JSON.cpp; sourceTree = "<group>"; };
 		8717FE1529ADF58D00B77DE2 /* tsschecker.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = tsschecker.hpp; path = include/tsschecker/tsschecker.hpp; sourceTree = SOURCE_ROOT; };
 		8717FE1629ADF58D00B77DE2 /* FirmwareAPI.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI.hpp; path = include/tsschecker/FirmwareAPI.hpp; sourceTree = SOURCE_ROOT; };
 		8717FE1729ADF58D00B77DE2 /* FirmwareAPI_IPSWME.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI_IPSWME.hpp; path = include/tsschecker/FirmwareAPI_IPSWME.hpp; sourceTree = SOURCE_ROOT; };
-		8753870629B0847800D71685 /* jssy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jssy.h; path = external/jssy/jssy/jssy.h; sourceTree = SOURCE_ROOT; };
+		DB2A3D0244B04CB0C4C07897 /* FirmwareAPI_AppleDB.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI_AppleDB.hpp; path = include/tsschecker/FirmwareAPI_AppleDB.hpp; sourceTree = SOURCE_ROOT; };
+		2C446F2047C199ED71534E53 /* FirmwareAPI_JSON.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI_JSON.hpp; path = include/tsschecker/FirmwareAPI_JSON.hpp; sourceTree = SOURCE_ROOT; };
+		8753870629B0847800D71685 /* jssy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jssy.h; path = external/jssy/include/jssy/jssy.h; sourceTree = SOURCE_ROOT; };
 		8753870729B0847900D71685 /* jssy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jssy.c; path = external/jssy/jssy/jssy.c; sourceTree = SOURCE_ROOT; };
 		87B5C28329AE00EE00AD4923 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		87B5C28929AE229800AD4923 /* libirecovery.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libirecovery.2.dylib; path = ../../../../usr/local/lib/libirecovery.2.dylib; sourceTree = "<group>"; };
@@ -118,6 +124,10 @@
 				8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */,
 				8717FE1729ADF58D00B77DE2 /* FirmwareAPI_IPSWME.hpp */,
 				8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */,
+				DB2A3D0244B04CB0C4C07897 /* FirmwareAPI_AppleDB.hpp */,
+				99D74C74D116BB62BAC7FC23 /* FirmwareAPI_AppleDB.cpp */,
+				2C446F2047C199ED71534E53 /* FirmwareAPI_JSON.hpp */,
+				65E82EF5C4417B52938C51D3 /* FirmwareAPI_JSON.cpp */,
 				8717FE1529ADF58D00B77DE2 /* tsschecker.hpp */,
 				8717FE0729ADECF200B77DE2 /* tsschecker.cpp */,
 				87B5C29529AE40DF00AD4923 /* TssRequest.hpp */,
@@ -214,6 +224,8 @@
 				87B5C29429AE3F9600AD4923 /* TssRequest.cpp in Sources */,
 				8717FE0929ADECF200B77DE2 /* tsschecker.cpp in Sources */,
 				8717FE1429ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp in Sources */,
+				5913690F3A39F79437172314 /* FirmwareAPI_AppleDB.cpp in Sources */,
+				48DF2D2322A97B27FF92BA6E /* FirmwareAPI_JSON.cpp in Sources */,
 				8717FE0129ADEB0E00B77DE2 /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

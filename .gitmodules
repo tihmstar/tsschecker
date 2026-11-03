@@ -1,3 +1,4 @@
 [submodule "external/jssy"]
 	path = external/jssy
-	url = https://github.com/tihmstar/jssy.git
+	url = https://github.com/coleleavitt/jssy.git
+	branch = fix-empty-container-sibling

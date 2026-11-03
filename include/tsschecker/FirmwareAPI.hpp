@@ -20,6 +20,8 @@ public:
     using firmwareVersion = tihmstar::tsschecker::firmwareVersion;
 protected:
     std::string getCachePath();
+    //fills in f.url when the list doesn't carry it. Returns false when the firmware has no file for device
+    virtual bool resolveFirmwareURL(firmwareVersion &f, const std::string &device);
 public:
     virtual ~FirmwareAPI() = default;
     
@@ -29,9 +31,10 @@ public:
 
     virtual std::vector<std::string> listDevices() = 0;
     virtual std::vector<firmwareVersion> listVersionsForDevice(std::string device) = 0;
-    virtual firmwareVersion getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version = "", std::string build = "") = 0;
-    
+
+    //empty version and build select the newest firmware
     firmwareVersion getURLForDeviceAndBuild(std::string device, std::string version = "", std::string build = "");
+    firmwareVersion getURLForDeviceAndBuild(uint32_t cpid, uint32_t bdid, std::string version = "", std::string build = "");
     firmwareVersion getURLForBoardAndBuild(std::string board, std::string version = "", std::string build = "");
 };
 };

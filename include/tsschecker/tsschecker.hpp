@@ -27,11 +27,15 @@ namespace tsschecker {
         std::string version;
         std::string build;
         std::string url;
+        std::string key; //source specific id, used to look up url later when it is empty
     };
 
 #pragma mark parsers
     uint64_t parseECID(const char *ecid);
     tihmstar::Mem parseHex(const char *hexstr);
+    //Cryptex1 nonce: SHA-384 of the seed encrypted with AES-128-CBC (zero IV) under the device's 0x8A4 key, first
+    //32 bytes. Unverified: taken from zytzjx/tsschecker crypto.go EncryptCryptex1Nonce
+    tihmstar::Mem cryptex1NonceFromSeed(const tihmstar::Mem &seed, const tihmstar::Mem &key);
     firmwareVersion firmwareVersionFromBuildManifest(plist_t pBuildManifest);
 
 #pragma mark downloaders
@@ -42,7 +46,7 @@ namespace tsschecker {
 
 #pragma mark file handling
     plist_t readPlist(const char *path);
-    void writePlist(const char *path, plist_t plist);
+    void writePlist(const char *path, plist_t plist, bool binary = false);
 
     std::string getTicketSavePathFromRequest(const char *path, const TssRequest &req);
 
@@ -67,8 +71,6 @@ namespace tsschecker {
     void *iterateOverPlistElementsInArray(plist_t array, std::function<void *(plist_t)> cb);
     void *iterateOverPlistElementsInDict(plist_t dict, std::function<void *(const char *,plist_t)> cb);
     void dumpplist(plist_t p);
-    
-    plist_t buildIdentityFromRestorePlist(plist_t restorePlist);
 };
 };
 

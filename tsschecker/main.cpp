@@ -6,6 +6,7 @@
 //
 
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
+#include <tsschecker/FirmwareAPI_AppleDB.hpp>
 #include <tsschecker/tsschecker.hpp>
 #include <tsschecker/TssRequest.hpp>
 #include <tsschecker/TSSException.hpp>
@@ -14,8 +15,10 @@
 #include <libgeneral/Utils.hpp>
 
 #include <getopt.h>
-#include <time.h>
 #include <string.h>
+#include <random>
+#include <algorithm>
+#include <memory>
 
 
 
@@ -43,6 +46,7 @@ static struct option longopts[] = {
     { "cache",              optional_argument, NULL, 'c' },
     { "device",             required_argument, NULL, 'd' },
     { "ecid",               required_argument, NULL, 'e' },
+    { "erase-install",      no_argument,       NULL, 'E' },
     { "generator",          required_argument, NULL, 'g' },
     { "ios",                required_argument, NULL, 'i' },
     { "latest",             no_argument,       NULL, 'l' },
@@ -53,16 +57,25 @@ static struct option longopts[] = {
     { "sepnonce",           required_argument, NULL, 'S' },
     { "update-install",     optional_argument, NULL, 'u' },
     { "buildid",            required_argument, NULL, 'Z' },
-    { "buildid",            required_argument, NULL, 'Z' },
     { "variant",            required_argument, NULL, 'V' },
     { "verbose",            no_argument,       NULL, 'v' },
 
     /* Long opts */
+    { "appledb",            no_argument,       NULL,  0  },
     { "bbsnum",             required_argument, NULL,  0  },
     { "bdid",               required_argument, NULL,  0  },
+    { "bplist",             no_argument,       NULL,  0  },
     { "beta",               no_argument,       NULL,  0  },
     { "components",         required_argument, NULL,  0  },
     { "cpid",               required_argument, NULL,  0  },
+    { "cryptex-nonce",      required_argument, NULL,  0  },
+    { "cryptex-seed",       required_argument, NULL,  0  },
+    { "cryptex-key",        required_argument, NULL,  0  },
+    { "cryptex-nonce-domain", required_argument, NULL,  0  },
+    { "se",                 required_argument, NULL,  0  },
+    { "savage",             required_argument, NULL,  0  },
+    { "yonkers",            required_argument, NULL,  0  },
+    { "rose",               required_argument, NULL,  0  },
 
     /* Info & Listing */
     { "list-devices",       no_argument,       NULL,  0  },
@@ -73,6 +86,7 @@ static struct option longopts[] = {
     { "print-tss-request",  no_argument,       NULL,  0  },
     { "print-tss-response", no_argument,       NULL,  0  },
     { "raw",                required_argument, NULL,  0  },
+    { "server-url",         required_argument, NULL,  0  },
 
     { NULL, 0, NULL, 0 }
 };
@@ -88,35 +102,55 @@ void cmd_help(){
     printf("  -d, --device MODEL\t\tspecific device by its model (eg. iPhone4,1)\n");
     printf("  -e, --ecid ECID\t\tmanually specify ECID to be used for fetching signing tickets, instead of using random ones\n");
     printf("                 \t\tECID must be either DEC or HEX eg. 5482657301265 or ab46efcbf71\n");
+    printf("  -E, --erase-install\t\trequest only the erase ticket (no extra update and nonce-less tickets when saving)\n");
     printf("  -g, --generator GEN\t\tmanually specify generator in format 0x%%16llx\n");
     printf("  -i, --ios VERSION\t\tspecific firmware version (eg. 6.1.3)\n");
     printf("  -l, --latest\t\t\tuse latest public firmware version instead of manually specifying one\n");
     printf("  -m, --build-manifest\t\tmanually specify buildmanifest (can be used with -d)\n");
     printf("  -N, --apnonce NONCE\t\tmanually specify ApNonce instead of using random one (not required for saving blobs)\n");
     printf("  -o, --ota\t\t\tcheck OTA signing status, instead of normal restore\n");
-    printf("  -s, --save [path]\t\tsave fetched shsh blobs (mostly makes sense with -e)\n");
+    printf("  -s, --save [path]\t\tsave fetched shsh blobs to path (default: current directory, mostly makes sense with -e)\n");
     printf("  -S, --sepnonce <NONCE>\tmanually specify SepNonce instead of using random one (not required for saving blobs)\n");
     printf("  -u, --update-install\t\trequest update ticket instead of erase\n");
     printf("                 \t\tespecially useful with -s and -e for saving signing tickets\n");
+    printf("  -v, --verbose\t\t\tprint TSS request and response\n");
     printf("  -V  --variant <VARIANT>\tspecify restore variant\n");
     printf("  -Z  --buildid <BUILD \t\tspecific buildid instead of firmware version (eg. 13C75)\n");
 
     /* Long opts */
+    printf("      --appledb\t\tget firmware lists from AppleDB instead of ipsw.me\n");
+    printf("                 \t\t(used automatically when ipsw.me has no firmwares for the device)\n");
     printf("      --bbsnum SNUM\t\tmanually specify BbSNUM in HEX for saving valid BBTicket (not required for saving blobs)\n");
     printf("      --bdid <bdid> Manually specify bdid\n");
-    printf("      --beta\t\t\trequest ticket for beta instead of normal release (use with -o)\n");
-    printf("      --cache\t\t\tCache requests to firmware api\n");
+    printf("      --bplist\t\t\tsave shsh blobs as binary plist\n");
+    printf("      --beta\t\t\tinclude beta firmwares in firmware lists (OTA only, use with -o)\n");
+    printf("  -c, --cache\t\t\tCache requests to firmware api (-c -c or --cache=2 only stores the cache)\n");
     printf("      --components <C1,C2,C3..> Request APTicket only for the following components\n");
     printf("      --cpid <cpid> Manually specify cpid\n");
+    printf("      --cryptex-nonce NONCE\talso request a Cryptex1 ticket for this Cryptex1 nonce (32 bytes HEX, needs --cryptex-seed)\n");
+    printf("      --cryptex-seed SEED\tCryptex1 seed (16 bytes HEX) stored with the Cryptex1 ticket in the saved blob\n");
+    printf("      --cryptex-key KEY\tderive the Cryptex1 nonce from --cryptex-seed with the device's 0x8A4 key (16 bytes HEX)\n");
+    printf("                 \t\tinstead of --cryptex-nonce. UNVERIFIED derivation\n");
+    printf("      --cryptex-nonce-domain TAG\tset Cryptex1,NonceDomain (iOS 27 TSS reads this).\n");
+    printf("                 \t\tFourcc tag selecting the img4 nonce domain the ticket binds to.\n");
+    printf("                 \t\tCommon values: 'trca' (cryptex1.boot.os), 'trcs' (cryptex1.boot.app),\n");
+    printf("                 \t\t'ltrs' (cryptex1.preboot.app). Omit for iOS 26- behavior.\n");
+    printf("      --se PLIST\t\talso request an SE ticket, using the device values in PLIST\n");
+    printf("      --savage PLIST\t\talso request a Savage ticket, using the device values in PLIST\n");
+    printf("      --yonkers PLIST\t\talso request a Yonkers ticket, using the device values in PLIST\n");
+    printf("      --rose PLIST\t\talso request a Rose (Rap) ticket, using the device values in PLIST\n");
+    printf("                 \t\t(values as the device reports them in a restore, libtatsu key names, e.g. Savage,UID)\n");
 
     /* Info & Listing */
     printf("      --list-devices\t\tlist all known devices\n");
     printf("      --list-versions\t\tlist all known firmware versions\n");
+    printf("      --list-builds\t\tlist all known firmware builds\n");
 
     /* Debugging */
     printf("      --print-tss-request\tprint TSS request that will be sent to Apple\n");
     printf("      --print-tss-response\tprint TSS response that come from Apple\n");
-    printf("      --raw\t\t\tsend raw file to Apple's TSS server (useful for debugging)\n\n");
+    printf("      --raw\t\t\tsend raw file to Apple's TSS server (useful for debugging)\n");
+    printf("      --server-url URL\t\tsend TSS requests to URL instead of Apple's servers\n\n");
 }
 
 
@@ -129,7 +163,9 @@ int main_r(int argc, const char * argv[]) {
     int optindex = 0;
     
     bool isOta = false;
+    bool includeBeta = false;
     CacheSelector useCache = kNoCache;
+    bool useAppleDB = false;
     
     bool doListDevices = false;
     bool doListVersions = false;
@@ -148,6 +184,26 @@ int main_r(int argc, const char * argv[]) {
     const char *rawRequestPath = NULL;
     const char *savePath = NULL;
     const char *buildManifestPath = NULL;
+    const char *bbsnum = NULL;
+    const char *cryptexNonceStr = NULL;
+    const char *cryptexNonceDomain = NULL;
+    const char *serverURL = NULL;
+    bool saveBplist = false;
+    const char *cryptexSeedStr = NULL;
+    const char *cryptexKeyStr = NULL;
+    struct Coprocessor{
+        const char *option;
+        const char *path;
+        void (TssRequest::*make)(plist_t);
+        const char *blobKey;
+        std::unique_ptr<void, void(*)(plist_t)> values{nullptr, plist_free};
+    };
+    Coprocessor coprocessors[] = {
+        {"se", NULL, &TssRequest::makeSERequest, "seTicket"},
+        {"savage", NULL, &TssRequest::makeSavageRequest, "savageTicket"},
+        {"yonkers", NULL, &TssRequest::makeYonkersRequest, "yonkersTicket"},
+        {"rose", NULL, &TssRequest::makeRoseRequest, "roseTicket"},
+    };
 
     std::string versionNumber;
     std::string buildNumber;
@@ -160,7 +216,7 @@ int main_r(int argc, const char * argv[]) {
     uint32_t cpid = 0;
     uint32_t bdid = 0;
 
-    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:g:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
+    while ((opt = getopt_long(argc, (char * const*)argv, "hb::B:c::d:e:Eg:i:lm:N:os::S:u::Z:vV:", longopts, &optindex)) >= 0) {
         switch (opt) {
             case 0:
             {
@@ -174,10 +230,32 @@ int main_r(int argc, const char * argv[]) {
                         whitelistComponents.push_back(scomp);
                     }
                     whitelistComponents.push_back(components);
+                }else if (curopt == "appledb") {
+                    useAppleDB = true;
+                }else if (curopt == "bbsnum") {
+                    bbsnum = optarg;
+                }else if (curopt == "beta") {
+                    includeBeta = true;
+                }else if (curopt == "bplist") {
+                    saveBplist = true;
+                }else if (curopt == "server-url") {
+                    serverURL = optarg;
                 }else if (curopt == "bdid") {
                     bdid = (uint32_t)parseECID(optarg);
                 }else if (curopt == "cpid") {
                     cpid = (uint32_t)parseECID(optarg);
+                }else if (curopt == "cryptex-nonce") {
+                    cryptexNonceStr = optarg;
+                }else if (curopt == "cryptex-seed") {
+                    cryptexSeedStr = optarg;
+                }else if (curopt == "cryptex-key") {
+                    cryptexKeyStr = optarg;
+                }else if (curopt == "cryptex-nonce-domain") {
+                    cryptexNonceDomain = optarg;
+                }else if (curopt == "se" || curopt == "savage" || curopt == "yonkers" || curopt == "rose") {
+                    for (auto &c : coprocessors) {
+                        if (curopt == c.option) c.path = optarg;
+                    }
                 }else if (curopt == "list-devices") {
                     doListDevices = true;
                 } else if (curopt == "list-versions") {
@@ -208,9 +286,9 @@ int main_r(int argc, const char * argv[]) {
                 
             case 'c': //long option "cache"
             {
-                int l_cache = optarg ? atoi(optarg)-1 : (int)useCache;
-                if (++l_cache > kCacheStoreOnly) l_cache = kCacheStoreOnly;
-                useCache = (CacheSelector)l_cache;
+                //-c / --cache=1 loads and stores the cache, -cc / --cache=2 only stores it
+                int l_cache = optarg ? atoi(optarg) : (int)useCache + 1;
+                useCache = (CacheSelector)std::min(std::max(l_cache, (int)kNoCache), (int)kCacheStoreOnly);
             }
                 break;
                 
@@ -220,6 +298,10 @@ int main_r(int argc, const char * argv[]) {
 
             case 'e': //long option "ecid"
                 ecid = parseECID(optarg);
+                break;
+
+            case 'E': //long option "erase-install"
+                restoreVariant = RESTORE_VARIANT_ERASE_INSTALL;
                 break;
 
             case 'g': //long option "generator"
@@ -252,7 +334,9 @@ int main_r(int argc, const char * argv[]) {
 
             case 's': //long option "save"
                 if (!(savePath = optarg)){
-                    savePath = "./";
+                    //getopt only takes optional arguments attached ("-s<path>"), also accept "-s <path>"
+                    if (optind < argc && argv[optind][0] != '-') savePath = argv[optind++];
+                    else savePath = "./";
                 }
                 break;
 
@@ -260,8 +344,13 @@ int main_r(int argc, const char * argv[]) {
                 restoreVariant = "Customer Upgrade Install";
                 break;
                 
-            case 'V': //long option "sepnonce"
+            case 'V': //long option "variant"
                 restoreVariant = optarg;
+                break;
+
+            case 'v': //long option "verbose"
+                doPrintTssRequest = true;
+                doPrintTssResponse = true;
                 break;
                 
             case 'Z': //long option "buildid"
@@ -291,13 +380,54 @@ int main_r(int argc, const char * argv[]) {
         });
         auto req = tihmstar::readFile(rawRequestPath);
         if (doPrintTssRequest) printf("\nrequest:\n%.*s\n",(int)req.size(),(char*)req.data());
-        rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size());
+        rsp = TssRequest::TssSendRawBuffer((char*)req.data(), req.size(), serverURL);
         if (doPrintTssResponse) printf("response:\n%s\n",rsp);
         if (savePath && rsp) {
             tihmstar::writeFile(savePath, rsp, strlen(rsp));
             info("Response saved to '%s'",savePath);
         }
         return 0;
+    }
+
+    tihmstar::Mem cryptexNonce;
+    std::string cryptexSeed;
+    if (cryptexNonceStr || cryptexSeedStr || cryptexKeyStr) {
+        //a Cryptex1 ticket can only be used later together with the seed that produces its nonce
+        retassure(cryptexSeedStr && (cryptexNonceStr || cryptexKeyStr), "--cryptex-seed needs --cryptex-nonce or --cryptex-key, and they need --cryptex-seed");
+        auto seed = parseHex(cryptexSeedStr);
+        retassure(seed.size() == 16, "Cryptex1 seed must be 16 bytes, got %d",seed.size());
+        if (cryptexNonceStr) {
+            cryptexNonce = parseHex(cryptexNonceStr);
+            retassure(cryptexNonce.size() == 32, "Cryptex1 nonce must be 32 bytes, got %d",cryptexNonce.size());
+        }
+        if (cryptexKeyStr) {
+            auto derived = cryptex1NonceFromSeed(seed, parseHex(cryptexKeyStr));
+            warning("Deriving the Cryptex1 nonce from the seed and key is UNVERIFIED. A wrong nonce gives a ticket that can't be used. Compare it with the nonce your device reports");
+            if (cryptexNonce.size()) {
+                retassure(cryptexNonce.size() == derived.size() && memcmp(cryptexNonce.data(), derived.data(), derived.size()) == 0, "--cryptex-nonce doesn't match the nonce derived with --cryptex-key");
+            }
+            cryptexNonce = derived;
+            std::string hex;
+            for (size_t i=0; i<cryptexNonce.size(); i++) {
+                char buf[4] = {};
+                snprintf(buf, sizeof(buf), "%02x",cryptexNonce.data()[i]);
+                hex += buf;
+            }
+            info("Derived Cryptex1 nonce: %s",hex.c_str());
+        }
+        cryptexSeed = "0x";
+        for (size_t i=0; i<seed.size(); i++) {
+            char buf[4] = {};
+            snprintf(buf, sizeof(buf), "%02x",seed.data()[i]);
+            cryptexSeed += buf;
+        }
+    }
+
+    for (auto &c : coprocessors) {
+        if (!c.path) continue;
+        c.values.reset(readPlist(c.path));
+        retassure(c.values, "Failed to read --%s plist '%s'",c.option,c.path);
+        retassure(plist_get_node_type(c.values.get()) == PLIST_DICT, "--%s plist '%s' must be a dictionary",c.option,c.path);
     }
 
     FirmwareAPI *fapi = nullptr;
@@ -315,21 +445,22 @@ int main_r(int argc, const char * argv[]) {
         }
         safeDelete(fapi);
     });
-    if (!buildManifestPath) {
-        fapi = new FirmwareAPI_IPSWME(isOta);
-        {
-            //load firmwares
-            bool isLoaded = false;
-            try {
-                if (useCache == kCacheLoadAndStore){
-                    fapi->loadcache();
-                    isLoaded = true;
-                }
-            } catch (tihmstar::exception &e) {
-                warning("Failed to load cache with error:\n%s",e.dumpStr().c_str());
+    auto loadFirmwareAPI = [&]{
+        bool isLoaded = false;
+        try {
+            if (useCache == kCacheLoadAndStore){
+                fapi->loadcache();
+                isLoaded = true;
             }
-            if (!isLoaded) fapi->load();
+        } catch (tihmstar::exception &e) {
+            warning("Failed to load cache with error:\n%s",e.dumpStr().c_str());
         }
+        if (!isLoaded) fapi->load();
+    };
+    if (!buildManifestPath) {
+        if (useAppleDB) fapi = new FirmwareAPI_AppleDB(isOta, includeBeta);
+        else fapi = new FirmwareAPI_IPSWME(isOta, includeBeta);
+        loadFirmwareAPI();
     }
     
     if (fapi && doListDevices) {
@@ -342,21 +473,44 @@ int main_r(int argc, const char * argv[]) {
         productType = getProductTypeFromBoardType(boardType);
     }else if (productType && !boardType){
         boardType = getBoardTypeFromProductType(productType);
-        if (!boardType){
-            error("Can't get board type for '%s'. Please manually specify boardtype",productType);
-            return -2;
-        }
     } else if (!productType && !boardType){
         error("No device specified!");
         return -1;
     }
-    if (!cpid) cpid = getCPIDForBoardType(boardType);
-    if (!bdid) bdid = getBDIDForBoardType(boardType);
-    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productType,boardType,cpid,bdid);
+    if (!cpid || !bdid) {
+        if (!boardType){
+            error("Can't get board type for '%s'. Please manually specify boardtype or --cpid and --bdid",productType);
+            return -2;
+        }
+        if (!cpid) cpid = getCPIDForBoardType(boardType);
+        if (!bdid) bdid = getBDIDForBoardType(boardType);
+    }
+    const char *productTypeName = productType ? productType : "(unknown product)";
+    const char *boardTypeName = boardType ? boardType : "(unknown board)";
+    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productTypeName,boardTypeName,cpid,bdid);
     if (!ecid) {
         warning("No ecid specified, generating random ecid!");
-        srand((unsigned)time(NULL));
-        ecid = ((uint64_t)rand() << 32) | rand();
+        //real ECIDs fit in 52 bits
+        ecid = std::mt19937_64{std::random_device{}()}() & 0x000FFFFFFFFFFFFFULL;
+    }
+    //ipsw.me lacks devices without IPSWs (Watch6+) and OTAs for some new devices
+    if (fapi && !useAppleDB && productType && [&]{
+        try {
+            return fapi->listVersionsForDevice(productType).empty();
+        } catch (tihmstar::exception &e) {
+            //ipsw.me answers 404 for devices it doesn't know
+            debug("ipsw.me lookup failed:\n%s",e.dumpStr().c_str());
+            return true;
+        }
+    }()) {
+        info("ipsw.me has no firmwares for %s, using AppleDB",productType);
+        if (useCache >= kCacheLoadAndStore) {
+            try { fapi->storecache(); } catch (tihmstar::exception &e) { warning("Failed to store cache with error:\n%s",e.dumpStr().c_str()); }
+        }
+        safeDelete(fapi);
+        useAppleDB = true;
+        fapi = new FirmwareAPI_AppleDB(isOta, includeBeta);
+        loadFirmwareAPI();
     }
     if (fapi && (doListVersions || doListBuilds)){
         if (!productType){
@@ -393,10 +547,10 @@ int main_r(int argc, const char * argv[]) {
                 error("Please specify a firmware version or BuildID for this option");
                 return -1;
             }
-            if (boardType){
+            if (productType){
+                fvers = fapi->getURLForDeviceAndBuild(std::string(productType), versionNumber, buildNumber);
+            } else {
                 fvers = fapi->getURLForBoardAndBuild(boardType, versionNumber, buildNumber);
-            } else if (productType) {
-                fvers = fapi->getURLForDeviceAndBuild(productType, versionNumber, buildNumber);
             }
             info("Got Firmware %s %s %s\n",fvers.version.c_str(),fvers.build.c_str(),fvers.url.c_str());
             p_BuildManifest = getBuildManifestFromUrl(fvers.url.c_str());
@@ -404,77 +558,176 @@ int main_r(int argc, const char * argv[]) {
         
         retassure(p_BuildManifest, "Failed to load BuildManifest.plist");
         
-        TssRequest req(p_BuildManifest,restoreVariant);
-        
-        req.setDeviceVals(cpid, bdid, false, productType);
-        req.setEcid(ecid);
-        if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
-            req.addDefaultAPTagsToRequest();
-            if (whitelistComponents.size() == 0) {
-                req.addAllAPComponentsToRequest();
-//                req.addYonkersComponentsToRequest();
+        auto buildRequest = [&](TssRequest &req, bool noNonce){
+            //nonce-less tickets are requested without baseband, like the C tsschecker does
+            RequestSelector selection = noNonce ? kRequestSelectorDefaultBasebandNo : requestSelection;
+            req.setDeviceVals(cpid, bdid, false, productType);
+            req.setEcid(ecid);
+            if (selection != kRequestSelectorDefaultBasebandOnly) {
+                req.addDefaultAPTagsToRequest();
+                if (whitelistComponents.size() == 0) {
+                    req.addAllAPComponentsToRequest();
+                    }else{
+                    for (auto comp : whitelistComponents) {
+                        req.addComponent(comp.c_str());
+                    }
+                }
+
+                if (noNonce) {
+                    req.setEmptyAPNonce();
+                }else if (!apnonce && !generator) {
+                    req.setNonceGenerator(0x726174736d686974); //"tihmstar" as little-endian uint64
+                }else{
+                    if (generator) req.setNonceGenerator(generator);
+                    if (apnonce){
+                        if (*apnonce) {
+                            req.setAPNonce(parseHex(apnonce));
+                        }else{
+                            req.unsetAPNonce();
+                        }
+                    }
+                }
+                if (sepnonce) req.setSEPNonce(parseHex(sepnonce));
             }else{
-                for (auto comp : whitelistComponents) {
-                    req.addComponent(comp.c_str());
+                info("Requesting baseband-only ticket");
+            }
+        
+            if (selection == kRequestSelectorDefaultBasebandNo){
+                info("Not requesting baseband ticket");
+            } else{
+                try {
+                    req.addBasebandComponentsToRequest();
+                    try {
+                        req.setDefaultBbGoldCertId();
+                        if (bbsnum) req.setSNUM(parseHex(bbsnum));
+                        else req.setRandomSNUM();
+                    } catch (tihmstar::exception &e) {
+                        error("Failed to construct baseband request with error:\n%s",e.dumpStr().c_str());
+                        if (selection == kRequestSelectorDefaultBasebandOnly) throw;
+                        warning("Skipping requesting baseband ticket due to previous errors");
+                        //a partial baseband request makes TSS fail the whole request (status 161)
+                        req.removeBasebandComponentsFromRequest();
+                    }
+                } catch (tihmstar::TSSException_missingValue &e) {
+                    if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) || selection == kRequestSelectorDefaultBasebandOnly) throw;
+                    warning("Skipping requesting baseband ticket, because required baseband values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
+                    req.removeBasebandComponentsFromRequest();
+                }
+            }
+        };
+        //returns NULL when TSS gives no ticket
+        auto sendRequest = [&](TssRequest &req)->plist_t{
+            if (doPrintTssRequest) req.dumpRequest();
+            plist_t ret = NULL;
+            try {
+                ret = req.getTSSResponce(serverURL);
+            } catch (tihmstar::TSSException_NoTicket &e) {
+                //
+            }
+            if (ret && doPrintTssResponse) dumpplist(ret);
+            return ret;
+        };
+
+        TssRequest req(p_BuildManifest,restoreVariant);
+        buildRequest(req, false);
+        rsp = sendRequest(req);
+        if (rsp) {
+            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
+            retval = 0;
+
+            //futurerestore uses the updateInstall ticket for update restores (-u)
+            if (savePath && restoreVariant.empty() && requestSelection != kRequestSelectorDefaultBasebandOnly
+                && TssRequest::getVariantNameFromBuildIdentity(req.getSelectedBuildIdentity()) == RESTORE_VARIANT_ERASE_INSTALL) {
+                info("Also requesting ticket for variant '%s'",RESTORE_VARIANT_UPGRADE_INSTALL);
+                try {
+                    TssRequest ureq(p_BuildManifest,RESTORE_VARIANT_UPGRADE_INSTALL);
+                    buildRequest(ureq, false);
+                    if (plist_t ursp = sendRequest(ureq)) {
+                        plist_dict_remove_item(ursp, "generator");
+                        plist_dict_set_item(rsp, "updateInstall", ursp);
+                    }else{
+                        warning("Failed to get ticket for variant '%s'",RESTORE_VARIANT_UPGRADE_INSTALL);
+                    }
+                } catch (tihmstar::exception &e) {
+                    warning("Skipping update ticket:\n%s",e.dumpStr().c_str());
                 }
             }
 
-            if (!apnonce && !generator) {
-                req.setNonceGenerator(*(uint64_t*)"tihmstar");
-            }else{
-                if (generator) req.setNonceGenerator(generator);
-                if (apnonce){
-                    if (*apnonce) {
-                        req.setAPNonce(parseHex(apnonce));
-                    }else{
-                        req.unsetAPNonce();
-                    }
-                }
-            }
-            if (sepnonce) req.setSEPNonce(parseHex(sepnonce));
-        }else{
-            info("Requesting baseband-only ticket");
-        }
-        
-        if (requestSelection == kRequestSelectorDefaultBasebandNo){
-            info("Not requesting baseband ticket");
-        } else{
-            try {
-                req.addBasebandComponentsToRequest();
+            //nonce-less ticket, saved as noNonce like the C tsschecker. TSS refuses it for many devices
+            if (savePath && restoreVariant.empty() && requestSelection != kRequestSelectorDefaultBasebandOnly) {
+                info("Also requesting ticket without a nonce");
                 try {
-                    req.setDefaultBbGoldCertId();
-                    req.setRandomSNUM();
+                    TssRequest nreq(p_BuildManifest,restoreVariant);
+                    buildRequest(nreq, true);
+                    if (plist_t nrsp = sendRequest(nreq)) {
+                        plist_dict_remove_item(nrsp, "generator");
+                        plist_dict_set_item(rsp, "noNonce", nrsp);
+                    }else{
+                        info("TSS gives no nonce-less ticket for this device");
+                    }
                 } catch (tihmstar::exception &e) {
-                    error("Failed to construct baseband requste with error:\n%s",e.dumpStr().c_str());
-                    if (requestSelection == kRequestSelectorDefaultBasebandOnly) throw;
-                    warning("Skipping requesting baseband ticket due to previous errors");
+                    warning("Skipping nonce-less ticket:\n%s",e.dumpStr().c_str());
                 }
-            } catch (tihmstar::TSSException_missingValue &e) {
-                if ((strncmp(e.keyname().c_str(), "Bb", 2) != 0 && strcmp(e.keyname().c_str(), "BasebandFirmware") != 0) && requestSelection != kRequestSelectorDefaultBasebandOnly) throw;
-                warning("Skipping requesting baseband ticket, because required basenand values could not be extracted from manifest (Missing key: '%s')",e.keyname().c_str());
             }
-        }
-        
-        if (doPrintTssRequest) req.dumpRequest();
-        
-        try {
-            rsp = req.getTSSResponce();
-        } catch (tihmstar::TSSException_NoTicket &e) {
-            //
-        }
-        if (rsp) {
-            if (doPrintTssResponse) dumpplist(rsp);
-            info("%s %s for %s %s IS signed!",fvers.version.c_str(),fvers.build.c_str(),productType,boardType);
-            retval = 0;
-            
+
+            if (cryptexNonce.size()) {
+                info("Also requesting Cryptex1 ticket");
+                try {
+                    TssRequest creq(p_BuildManifest,restoreVariant);
+                    creq.setDeviceVals(cpid, bdid, false, productType);
+                    creq.setEcid(ecid);
+                    creq.makeCryptex1Request(cryptexNonce,
+                        cryptexNonceDomain ? std::string(cryptexNonceDomain) : std::string());
+                    plist_t crsp = sendRequest(creq);
+                    if (crsp && plist_dict_get_item(crsp, "Cryptex1,Ticket")) {
+                        info("Got Cryptex1 ticket");
+                        plist_dict_set_item(rsp, "cryptexTicket", crsp);
+                        plist_dict_set_item(rsp, "cryptexSeed", plist_new_string(cryptexSeed.c_str()));
+                    }else{
+                        safeFreeCustom(crsp, plist_free);
+                        error("Failed to get Cryptex1 ticket");
+                        retval = 2;
+                    }
+                } catch (tihmstar::exception &e) {
+                    error("Failed to request Cryptex1 ticket:\n%s",e.dumpStr().c_str());
+                    retval = 2;
+                }
+            }
+
+            for (auto &c : coprocessors) {
+                if (!c.values) continue;
+                info("Also requesting %s ticket",c.option);
+                try {
+                    TssRequest coreq(p_BuildManifest,restoreVariant);
+                    coreq.setDeviceVals(cpid, bdid, false, productType);
+                    (coreq.*c.make)(c.values.get());
+                    plist_t corsp = sendRequest(coreq);
+                    bool hasTicket = corsp && iterateOverPlistElementsInDict(corsp, [](const char *key, plist_t e)->void*{
+                        size_t len = strlen(key);
+                        return (void*)(uintptr_t)(len > 7 && strcmp(key + len - 7, ",Ticket") == 0);
+                    });
+                    if (hasTicket) {
+                        info("Got %s ticket",c.option);
+                        plist_dict_set_item(rsp, c.blobKey, corsp);
+                    }else{
+                        safeFreeCustom(corsp, plist_free);
+                        error("Failed to get %s ticket",c.option);
+                        retval = 2;
+                    }
+                } catch (tihmstar::exception &e) {
+                    error("Failed to request %s ticket:\n%s",c.option,e.dumpStr().c_str());
+                    retval = 2;
+                }
+            }
+
             if (savePath) {
                 auto ticketpath = getTicketSavePathFromRequest(savePath, req);
-                writePlist(ticketpath.c_str(), rsp);
+                writePlist(ticketpath.c_str(), rsp, saveBplist);
                 info("APTicket saved to '%s'",ticketpath.c_str());
             }
             
         }else{
-            info("%s %s for %s %s is NOT signed!",fvers.version.c_str(),fvers.build.c_str(),productType,boardType);
+            info("%s %s for %s %s is NOT signed!",fvers.version.c_str(),fvers.build.c_str(),productTypeName,boardTypeName);
             retval = 1;
         }
     }
