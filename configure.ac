@@ -47,8 +47,9 @@ CFLAGS+=" -std=c11"
 # Checks for libraries.
 LIBCURL_REQUIRES_STR="libcurl >= 7.0.0"
 LIBFRAGMENTZIP_REQUIRES_STR="libfragmentzip >= 65"
-LIBGENERAL_REQUIRES_STR="libgeneral >= 75"
+LIBGENERAL_REQUIRES_STR="libgeneral >= 238"
 LIBIRECOVERY_REQUIRES_STR="libirecovery-1.0 >= 1.0.0"
+LIBJSSY_REQUIRES_STR="libjssy >= 33"
 LIBPLIST_REQUIRES_STR="libplist-2.0 >= 2.3.0"
 OPENSSL_REQUIRES_STR="openssl >= 0.9.8"
 
@@ -56,6 +57,7 @@ PKG_CHECK_MODULES(libcurl, $LIBCURL_REQUIRES_STR)
 PKG_CHECK_MODULES(libfragmentzip, $LIBFRAGMENTZIP_REQUIRES_STR)
 PKG_CHECK_MODULES(libgeneral, $LIBGENERAL_REQUIRES_STR)
 PKG_CHECK_MODULES(libirecovery, $LIBIRECOVERY_REQUIRES_STR)
+PKG_CHECK_MODULES(libjssy, $LIBJSSY_REQUIRES_STR)
 PKG_CHECK_MODULES(libplist, $LIBPLIST_REQUIRES_STR)
 PKG_CHECK_MODULES(openssl, $OPENSSL_REQUIRES_STR, have_openssl=yes, have_openssl=no)
 
@@ -64,6 +66,7 @@ AC_SUBST([libcurl_requires], [$LIBCURL_REQUIRES_STR])
 AC_SUBST([libfragmentzip_requires], [$LIBFRAGMENTZIP_REQUIRES_STR])
 AC_SUBST([libgeneral_requires], [$LIBGENERAL_REQUIRES_STR])
 AC_SUBST([libirecovery_requires], [$LIBIRECOVERY_REQUIRES_STR])
+AC_SUBST([libjssy_requires], [$LIBJSSY_REQUIRES_STR])
 AC_SUBST([libplist_requires], [$LIBPLIST_REQUIRES_STR])
 
 AC_ARG_ENABLE([debug],
@@ -78,7 +81,7 @@ AC_ARG_WITH([openssl],
             [with_openssl=no],
             [with_openssl=yes])
 
-if test "x$debug_build" = "true"; then
+if test "x$debug_build" = "xtrue"; then
   echo "*** Note: debug build requested ***"
   CFLAGS+=" -g -O0 -DDEBUG=1"
   CXXFLAGS+=" -g -O0 -DDEBUG=1"
@@ -104,6 +107,8 @@ if test "x$crypto_backend" != "xnone"; then
   AC_DEFINE(HAVE_CRYPTO, 1, [Define if you have either openssl or CommCrypto])
 fi
 
+# check for large file support
+AC_SYS_LARGEFILE
 
 AC_CONFIG_FILES([Makefile
                  include/Makefile

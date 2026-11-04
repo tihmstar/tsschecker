@@ -4,18 +4,18 @@
 //
 //  Created by tihmstar on 28.02.23.
 //
+#include <libgeneral/macros.h>
 
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
 #include <tsschecker/tsschecker.hpp>
 
-#include <libgeneral/macros.h>
+#include <jssy/jssy.h>
+
+#include <algorithm>
+
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-
-extern "C"{
-#include "../external/jssy/jssy/jssy.h"
-}
 
 using namespace tihmstar::tsschecker;
 

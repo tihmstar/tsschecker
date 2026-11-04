@@ -4,6 +4,7 @@
 //
 //  Created by tihmstar on 28.02.23.
 //
+#include <libgeneral/macros.h>
 
 #include <tsschecker/TSSException.hpp>
 

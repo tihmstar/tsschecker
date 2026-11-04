@@ -7,22 +7,23 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2A2B96492CD90D8C00EEC022 /* libplist-2.0.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B96482CD90D8C00EEC022 /* libplist-2.0.4.dylib */; };
+		2A2B964A2CD90D8C00EEC022 /* libplist-2.0.4.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 2A2B96482CD90D8C00EEC022 /* libplist-2.0.4.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		2A2B964C2CD90D9600EEC022 /* libirecovery-1.0.5.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A2B964B2CD90D9600EEC022 /* libirecovery-1.0.5.dylib */; };
+		2A2B964D2CD90D9600EEC022 /* libirecovery-1.0.5.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 2A2B964B2CD90D9600EEC022 /* libirecovery-1.0.5.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		2A9207D23099D38500B08BF1 /* libjssy.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A9207D13099D38500B08BF1 /* libjssy.0.dylib */; };
+		2A9207D33099D38500B08BF1 /* libjssy.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 2A9207D13099D38500B08BF1 /* libjssy.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8717FE0129ADEB0E00B77DE2 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0029ADEB0E00B77DE2 /* main.cpp */; };
 		8717FE0929ADECF200B77DE2 /* tsschecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0729ADECF200B77DE2 /* tsschecker.cpp */; };
 		8717FE0C29ADEF7E00B77DE2 /* libgeneral.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */; };
 		8717FE0D29ADEF7E00B77DE2 /* libgeneral.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		8717FE1129ADF43400B77DE2 /* FirmwareAPI.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE0F29ADF43400B77DE2 /* FirmwareAPI.cpp */; };
 		8717FE1429ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8717FE1229ADF53200B77DE2 /* FirmwareAPI_IPSWME.cpp */; };
-		8753870829B0847900D71685 /* jssy.c in Sources */ = {isa = PBXBuildFile; fileRef = 8753870729B0847900D71685 /* jssy.c */; };
 		87B5C28429AE00F300AD4923 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28329AE00EE00AD4923 /* libcurl.tbd */; };
 		87B5C29029AE3D6E00AD4923 /* libfragmentzip.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */; };
 		87B5C29129AE3D6E00AD4923 /* libfragmentzip.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		87B5C29429AE3F9600AD4923 /* TssRequest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87B5C29229AE3F9600AD4923 /* TssRequest.cpp */; };
 		87B5C29829AE421D00AD4923 /* TSSException.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 87B5C29629AE421D00AD4923 /* TSSException.cpp */; };
-		87E2B1AD29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */; };
-		87E2B1AE29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		87FA43462E227D30008C251D /* libplist-2.0.4.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 87FA43452E227D30008C251D /* libplist-2.0.4.dylib */; };
-		87FA43472E227D30008C251D /* libplist-2.0.4.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 87FA43452E227D30008C251D /* libplist-2.0.4.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,10 +42,11 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				87FA43472E227D30008C251D /* libplist-2.0.4.dylib in Embed Libraries */,
+				2A2B964D2CD90D9600EEC022 /* libirecovery-1.0.5.dylib in Embed Libraries */,
 				87B5C29129AE3D6E00AD4923 /* libfragmentzip.0.dylib in Embed Libraries */,
 				8717FE0D29ADEF7E00B77DE2 /* libgeneral.0.dylib in Embed Libraries */,
-				87E2B1AE29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Embed Libraries */,
+				2A9207D33099D38500B08BF1 /* libjssy.0.dylib in Embed Libraries */,
+				2A2B964A2CD90D8C00EEC022 /* libplist-2.0.4.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -52,6 +54,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		2A2B96482CD90D8C00EEC022 /* libplist-2.0.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libplist-2.0.4.dylib"; path = "../../../../usr/local/lib/libplist-2.0.4.dylib"; sourceTree = "<group>"; };
+		2A2B964B2CD90D9600EEC022 /* libirecovery-1.0.5.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libirecovery-1.0.5.dylib"; path = "../../../../usr/local/lib/libirecovery-1.0.5.dylib"; sourceTree = "<group>"; };
+		2A9207D13099D38500B08BF1 /* libjssy.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libjssy.0.dylib; path = ../../../../usr/local/lib/libjssy.0.dylib; sourceTree = "<group>"; };
 		8717FDFD29ADEB0E00B77DE2 /* tsschecker */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = tsschecker; sourceTree = BUILT_PRODUCTS_DIR; };
 		8717FE0029ADEB0E00B77DE2 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		8717FE0729ADECF200B77DE2 /* tsschecker.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = tsschecker.cpp; sourceTree = "<group>"; };
@@ -61,8 +66,6 @@
 		8717FE1529ADF58D00B77DE2 /* tsschecker.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = tsschecker.hpp; path = include/tsschecker/tsschecker.hpp; sourceTree = SOURCE_ROOT; };
 		8717FE1629ADF58D00B77DE2 /* FirmwareAPI.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI.hpp; path = include/tsschecker/FirmwareAPI.hpp; sourceTree = SOURCE_ROOT; };
 		8717FE1729ADF58D00B77DE2 /* FirmwareAPI_IPSWME.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = FirmwareAPI_IPSWME.hpp; path = include/tsschecker/FirmwareAPI_IPSWME.hpp; sourceTree = SOURCE_ROOT; };
-		8753870629B0847800D71685 /* jssy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = jssy.h; path = external/jssy/jssy/jssy.h; sourceTree = SOURCE_ROOT; };
-		8753870729B0847900D71685 /* jssy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = jssy.c; path = external/jssy/jssy/jssy.c; sourceTree = SOURCE_ROOT; };
 		87B5C28329AE00EE00AD4923 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		87B5C28929AE229800AD4923 /* libirecovery.2.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libirecovery.2.dylib; path = ../../../../usr/local/lib/libirecovery.2.dylib; sourceTree = "<group>"; };
 		87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libplist-2.0.3.dylib"; path = "../../../../usr/local/lib/libplist-2.0.3.dylib"; sourceTree = "<group>"; };
@@ -72,7 +75,6 @@
 		87B5C29629AE421D00AD4923 /* TSSException.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TSSException.cpp; sourceTree = "<group>"; };
 		87B5C29929AE427B00AD4923 /* TSSException.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = TSSException.hpp; path = include/tsschecker/TSSException.hpp; sourceTree = SOURCE_ROOT; };
 		87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libirecovery-1.0.3.dylib"; path = "../../../../usr/local/lib/libirecovery-1.0.3.dylib"; sourceTree = "<group>"; };
-		87FA43452E227D30008C251D /* libplist-2.0.4.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libplist-2.0.4.dylib"; path = "../../../../usr/local/lib/libplist-2.0.4.dylib"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,11 +82,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2A2B96492CD90D8C00EEC022 /* libplist-2.0.4.dylib in Frameworks */,
 				87B5C28429AE00F300AD4923 /* libcurl.tbd in Frameworks */,
 				87B5C29029AE3D6E00AD4923 /* libfragmentzip.0.dylib in Frameworks */,
-				87E2B1AD29B0BB4C002948B4 /* libirecovery-1.0.3.dylib in Frameworks */,
-				87FA43462E227D30008C251D /* libplist-2.0.4.dylib in Frameworks */,
+				2A9207D23099D38500B08BF1 /* libjssy.0.dylib in Frameworks */,
 				8717FE0C29ADEF7E00B77DE2 /* libgeneral.0.dylib in Frameworks */,
+				2A2B964C2CD90D9600EEC022 /* libirecovery-1.0.5.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,7 +114,6 @@
 		8717FDFF29ADEB0E00B77DE2 /* tsschecker */ = {
 			isa = PBXGroup;
 			children = (
-				87B5C28529AE03CD00AD4923 /* external */,
 				87B5C29929AE427B00AD4923 /* TSSException.hpp */,
 				87B5C29629AE421D00AD4923 /* TSSException.cpp */,
 				8717FE1629ADF58D00B77DE2 /* FirmwareAPI.hpp */,
@@ -130,7 +132,9 @@
 		8717FE0A29ADEF7E00B77DE2 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				87FA43452E227D30008C251D /* libplist-2.0.4.dylib */,
+				2A9207D13099D38500B08BF1 /* libjssy.0.dylib */,
+				2A2B964B2CD90D9600EEC022 /* libirecovery-1.0.5.dylib */,
+				2A2B96482CD90D8C00EEC022 /* libplist-2.0.4.dylib */,
 				87E2B1AC29B0BB4C002948B4 /* libirecovery-1.0.3.dylib */,
 				87B5C28F29AE3D6E00AD4923 /* libfragmentzip.0.dylib */,
 				87B5C28C29AE3AE000AD4923 /* libplist-2.0.3.dylib */,
@@ -139,15 +143,6 @@
 				8717FE0B29ADEF7E00B77DE2 /* libgeneral.0.dylib */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		87B5C28529AE03CD00AD4923 /* external */ = {
-			isa = PBXGroup;
-			children = (
-				8753870729B0847900D71685 /* jssy.c */,
-				8753870629B0847800D71685 /* jssy.h */,
-			);
-			name = external;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -208,7 +203,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				8753870829B0847900D71685 /* jssy.c in Sources */,
 				87B5C29829AE421D00AD4923 /* TSSException.cpp in Sources */,
 				8717FE1129ADF43400B77DE2 /* FirmwareAPI.cpp in Sources */,
 				87B5C29429AE3F9600AD4923 /* TssRequest.cpp in Sources */,

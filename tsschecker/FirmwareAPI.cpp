@@ -4,11 +4,10 @@
 //
 //  Created by tihmstar on 28.02.23.
 //
+#include <libgeneral/macros.h>
 
 #include <tsschecker/FirmwareAPI.hpp>
 #include <tsschecker/tsschecker.hpp>
-
-#include <libgeneral/macros.h>
 
 #include <sys/stat.h>
 #include <unistd.h>

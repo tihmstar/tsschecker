@@ -4,13 +4,13 @@
 //
 //  Created by tihmstar on 28.02.23.
 //
+#include <libgeneral/macros.h>
 
 #include <tsschecker/FirmwareAPI_IPSWME.hpp>
 #include <tsschecker/tsschecker.hpp>
 #include <tsschecker/TssRequest.hpp>
 #include <tsschecker/TSSException.hpp>
 
-#include <libgeneral/macros.h>
 #include <libgeneral/Utils.hpp>
 
 #include <getopt.h>
@@ -337,7 +337,9 @@ int main_r(int argc, const char * argv[]) {
         printListOfDevices(devs);
         return 0;
     }
-    
+
+    if (!productType && cpid && bdid) productType = getProductTypeFromCPIDandBDID(cpid, bdid);
+
     if (boardType && !productType){
         productType = getProductTypeFromBoardType(boardType);
     }else if (productType && !boardType){
@@ -352,7 +354,12 @@ int main_r(int argc, const char * argv[]) {
     }
     if (!cpid) cpid = getCPIDForBoardType(boardType);
     if (!bdid) bdid = getBDIDForBoardType(boardType);
-    info("Identified device as %s %s cpid:0x%x bdid:0x%x",productType,boardType,cpid,bdid);
+    {
+        printf("Identified device as %s %s",productType,boardType);
+        if (cpid) printf(" cpid:0x%x",cpid);
+        if (bdid) printf(" bdid:0x%x",bdid);
+        printf("\n");
+    }
     if (!ecid) {
         warning("No ecid specified, generating random ecid!");
         srand((unsigned)time(NULL));
@@ -406,7 +413,7 @@ int main_r(int argc, const char * argv[]) {
         
         TssRequest req(p_BuildManifest,restoreVariant);
         
-        req.setDeviceVals(cpid, bdid, false, productType);
+        req.setDeviceVals(cpid, bdid, false);
         req.setEcid(ecid);
         if (requestSelection != kRequestSelectorDefaultBasebandOnly) {
             req.addDefaultAPTagsToRequest();

@@ -4,11 +4,11 @@
 //
 //  Created by tihmstar on 28.02.23.
 //
+#include <libgeneral/macros.h>
 
 #include <tsschecker/TssRequest.hpp>
 #include <tsschecker/tsschecker.hpp>
 #include <tsschecker/TSSException.hpp>
-#include <libgeneral/macros.h>
 #include <curl/curl.h>
 #include <time.h>
 #include <string.h>
@@ -145,19 +145,45 @@ bool TssRequest::isProductTypeValidForRequest(const char *productType){
     }
     return false;
 }
+
+bool TssRequest::isProductValidForRequest(uint32_t cpid, uint32_t bdid){
+    plist_array_iter p_iter_SupportedProductType = NULL;
+    cleanup([&]{
+        safeFree(p_iter_SupportedProductType);
+    });
+    plist_t pSupportedProductType = NULL;
+    plist_t pProductType = NULL;
+
+    if (_pBuildManifest) {
+        const char *productType = NULL;
+        productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
+        retcustomassure(TSSException_unsupportedProductType, pSupportedProductType = plist_dict_get_item(_pBuildManifest, "SupportedProductTypes"), "Failed to get SupportedProductTypes");
+        plist_array_new_iter(pSupportedProductType, &p_iter_SupportedProductType);
+        for (plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType); pProductType; plist_array_next_item(pSupportedProductType, p_iter_SupportedProductType, &pProductType)) {
+            if (plist_string_val_compare(pProductType, productType) == 0) return true;
+        }
+    }else if (_pBuildIdentity){
+        bool isInvalid = false;
+        isInvalid |= (cpid != getNumberFromStringElementInDict(_pBuildIdentity, "ApChipID"));
+        isInvalid |= (bdid != getNumberFromStringElementInDict(_pBuildIdentity, "ApBoardID"));
+        return !isInvalid;
+    }else{
+        reterror("Unexpecte not having neither BuildManifest nor Buildidentity");
+    }
+    return false;
+}
     
 #pragma mark value modifiers
-void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force, const char *productType){
+void TssRequest::setDeviceVals(uint32_t cpid, uint32_t bdid, bool force){
     try{
-        //check whether the ProductType is supported
-        if (!productType) productType = tsschecker::getProductTypeFromCPIDandBDID(cpid, bdid);
-        retcustomassure(TSSException_unsupportedProductType, isProductTypeValidForRequest(productType), "ProductType is not valid for this request");
+        //check whether the Product is supported
+        retcustomassure(TSSException_unsupportedProductType, isProductValidForRequest(cpid,bdid), "ProductType is not valid for this request");
     }catch (tihmstar::TSSException_unsupportedProductType &e){
         if (!force) throw;
-        warning("Ignoring incompatible ProductType.\n%s",e.dumpStr().c_str());
+        warning("Ignoring incompatible Product.\n%s",e.dumpStr().c_str());
     }
 
-    info("Setting device vals: %s CPID:0x%x BDID:0x%x",productType,cpid,bdid);
+    info("Setting device vals: CPID:0x%x BDID:0x%x",cpid,bdid);
     plist_dict_set_item(_pReq, "ApChipID", plist_new_uint(cpid));
     plist_dict_set_item(_pReq, "ApBoardID", plist_new_uint(bdid));
 }
