@@ -11,7 +11,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     env:
       BUILDROOT: "buildroot_${{ matrix.platform }}"
-      GIT_DEPENDENCIES: libfragmentzip,libgeneral,libimobiledevice-glue,libirecovery,libplist
+      GIT_DEPENDENCIES: jssy,libfragmentzip,libgeneral,libimobiledevice-glue,libirecovery,libplist
 
     steps:
     - uses: actions/checkout@v4
